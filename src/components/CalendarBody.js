@@ -155,7 +155,7 @@ export default {
             <!-- ПОД линией: описание -->
             <div
               v-if="mark.description"
-              class="text-[12px] text-stone-400 leading-relaxed pl-2.5 pr-2 mt-2 line-clamp-3 break-words"
+              class="text-[12px] text-stone-400 leading-relaxed pl-2.5 pr-2 mt-2 line-clamp-5 break-words"
             >
               {{ mark.description }}
             </div>

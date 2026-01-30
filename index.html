@@ -69,7 +69,8 @@
   <div id="app">
     <!-- Header Component -->
     <app-header :schedules="schedules" :active-schedule-index="activeScheduleIndex" :active-schedule="activeSchedule"
-      @update:active-schedule-index="activeScheduleIndex = $event" @create-schedule="handleCreateSchedule"></app-header>
+      @update:active-schedule-index="activeScheduleIndex = $event" @create-schedule="handleCreateSchedule"
+      @delete-schedule="handleDeleteSchedule" @update-schedule="handleUpdateSchedule"></app-header>
 
     <!-- Calendar Body Component -->
     <calendar-body :marks="marks" :current-time="currentTime"></calendar-body>
@@ -145,6 +146,15 @@
           });
         }
 
+        function handleUpdateSchedule(data) {
+          if (!activeSchedule.value) return;
+          const updated = scheduleService.updateSchedule(activeSchedule.value.id, data);
+          const index = activeScheduleIndex.value;
+          schedules.value = schedules.value.map((s, i) => (i === index ? updated : s));
+          // Засечки пересчитываются в сервисе (shiftDefaultMarks), перезагружаем
+          marks.value = markService.getMarks(updated.id);
+        }
+
         function handleCreateSchedule(name) {
           // Копируем время из текущей активной вкладки
           const currentSchedule = activeSchedule.value;
@@ -159,6 +169,38 @@
           activeScheduleIndex.value = schedules.value.length - 1;
 
           console.log('✓ Создано новое расписание:', name);
+        }
+
+        function handleDeleteSchedule(index) {
+          const scheduleToDelete = schedules.value[index];
+
+          // Удаляем расписание (также удалит все связанные засечки)
+          scheduleService.deleteSchedule(scheduleToDelete.id);
+          schedules.value.splice(index, 1);
+
+          // Если удалили последнее — создаём новое дефолтное расписание
+          if (schedules.value.length === 0) {
+            const defaultSchedule = scheduleService.createSchedule(
+              'Обычный день',
+              '07:00',
+              '22:00'
+            );
+            schedules.value.push(defaultSchedule);
+            activeScheduleIndex.value = 0;
+            marks.value = markService.getMarks(defaultSchedule.id);
+            console.log('✓ Создано дефолтное расписание');
+          } else {
+            // Переключаемся на соседнюю вкладку
+            if (activeScheduleIndex.value >= schedules.value.length) {
+              activeScheduleIndex.value = schedules.value.length - 1;
+            } else if (activeScheduleIndex.value > index) {
+              activeScheduleIndex.value--;
+            }
+            if (activeSchedule.value) {
+              marks.value = markService.getMarks(activeSchedule.value.id);
+            }
+            console.log('✓ Удалено расписание:', scheduleToDelete.name);
+          }
         }
 
         // Lifecycle
@@ -180,7 +222,9 @@
           activeSchedule,
           marks,
           currentTime,
-          handleCreateSchedule
+          handleCreateSchedule,
+          handleDeleteSchedule,
+          handleUpdateSchedule
         };
       }
     }).mount('#app');

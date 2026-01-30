@@ -3,6 +3,8 @@
  * Компонент шапки с вкладками расписаний и настройками времени
  */
 
+import { normalizeTime } from '../utils/TimeUtils.js';
+
 export default {
   name: 'AppHeader',
 
@@ -21,12 +23,14 @@ export default {
     }
   },
 
-  emits: ['update:activeScheduleIndex', 'createSchedule'],
+  emits: ['update:activeScheduleIndex', 'createSchedule', 'deleteSchedule', 'updateSchedule'],
 
   data() {
     return {
       isCreatingSchedule: false,
-      newScheduleName: ''
+      newScheduleName: '',
+      editingTimeField: null, // null | 'bedtime' | 'wakeTime'
+      editingTimeValue: ''
     };
   },
 
@@ -58,6 +62,37 @@ export default {
 
       this.$emit('createSchedule', name);
       this.cancelCreation();
+    },
+
+    deleteSchedule(index, event) {
+      event.stopPropagation(); // Предотвращаем переключение на вкладку
+      this.$emit('deleteSchedule', index);
+    },
+
+    startEditingTime(field) {
+      if (!this.activeSchedule) return;
+      this.editingTimeField = field;
+      this.editingTimeValue = this.activeSchedule[field] || '07:00';
+      this.$nextTick(() => {
+        const ref = field === 'bedtime' ? 'bedtimeInput' : 'wakeTimeInput';
+        this.$refs[ref]?.focus();
+      });
+    },
+
+    cancelEditingTime() {
+      this.editingTimeField = null;
+      this.editingTimeValue = '';
+    },
+
+    applyTimeEdit() {
+      const normalized = normalizeTime(this.editingTimeValue);
+      if (!normalized) {
+        this.cancelEditingTime();
+        return;
+      }
+      const field = this.editingTimeField;
+      this.$emit('updateSchedule', { [field]: normalized });
+      this.cancelEditingTime();
     }
   },
 
@@ -65,19 +100,27 @@ export default {
     <header class="border-b border-stone-200">
       <div class="max-w-3xl mx-auto px-8 h-[52px] flex justify-between items-center">
         <!-- Вкладки расписаний -->
-        <div class="flex gap-1 items-center">
+        <div class="flex items-center">
           <button
             v-for="(schedule, index) in schedules"
             :key="schedule.id"
             @click="selectSchedule(index)"
             :class="[
-              'header-btn px-3 py-1 text-[13px] font-medium transition-all duration-150',
+              'header-btn px-3 py-1 text-[13px] font-medium transition-all duration-150 flex items-center gap-1 group',
               activeScheduleIndex === index
                 ? 'text-stone-700'
                 : 'text-stone-400'
             ]"
           >
-            {{ schedule.name }}
+            <span>{{ schedule.name }}</span>
+            <!-- Кнопка удаления - место всегда зарезервировано, показывается при hover на любую вкладку -->
+            <span
+              @click="deleteSchedule(index, $event)"
+              class="text-[11px] transition-all duration-150 text-stone-400 hover:text-red-500 opacity-0 group-hover:opacity-100 cursor-pointer"
+              title="Удалить расписание"
+            >
+              🗑️
+            </span>
           </button>
 
           <!-- Создание новой вкладки -->
@@ -121,13 +164,49 @@ export default {
 
         <!-- Настройки времени сна -->
         <div class="flex gap-6 items-center text-[13px] text-stone-600">
-          <div class="flex items-center gap-1.5">
-            <span class="text-base">🌙</span>
-            <span class="time-display">{{ activeSchedule?.bedtime }}</span>
+          <!-- Время сна -->
+          <div class="flex items-center">
+            <template v-if="editingTimeField === 'bedtime'">
+              <span class="text-base mr-1.5">🌙</span>
+              <input
+                ref="bedtimeInput"
+                v-model="editingTimeValue"
+                @keyup.enter="applyTimeEdit"
+                @keyup.escape="cancelEditingTime"
+                type="text"
+                placeholder="22:00"
+                maxlength="5"
+                class="px-2 py-1 h-[28px] text-[13px] bg-stone-50 rounded focus:outline-none focus:bg-stone-100 w-14 transition-colors time-display"
+              />
+              <button type="button" @click="applyTimeEdit" class="px-1.5 h-[28px] text-[13px] text-stone-600 hover:text-stone-700 transition-colors" title="Применить">✓</button>
+              <button type="button" @click="cancelEditingTime" class="px-1.5 h-[28px] text-[13px] text-stone-400 hover:text-stone-600 transition-colors" title="Отмена">✕</button>
+            </template>
+            <button v-else @click="startEditingTime('bedtime')" class="header-btn flex items-center gap-1.5 px-1 py-1 cursor-pointer rounded">
+              <span class="text-base">🌙</span>
+              <span class="time-display">{{ activeSchedule?.bedtime }}</span>
+            </button>
           </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-base">☀️</span>
-            <span class="time-display">{{ activeSchedule?.wakeTime }}</span>
+          <!-- Время подъёма -->
+          <div class="flex items-center">
+            <template v-if="editingTimeField === 'wakeTime'">
+              <span class="text-base mr-1.5">☀️</span>
+              <input
+                ref="wakeTimeInput"
+                v-model="editingTimeValue"
+                @keyup.enter="applyTimeEdit"
+                @keyup.escape="cancelEditingTime"
+                type="text"
+                placeholder="07:00"
+                maxlength="5"
+                class="px-2 py-1 h-[28px] text-[13px] bg-stone-50 rounded focus:outline-none focus:bg-stone-100 w-14 transition-colors time-display"
+              />
+              <button type="button" @click="applyTimeEdit" class="px-1.5 h-[28px] text-[13px] text-stone-600 hover:text-stone-700 transition-colors" title="Применить">✓</button>
+              <button type="button" @click="cancelEditingTime" class="px-1.5 h-[28px] text-[13px] text-stone-400 hover:text-stone-600 transition-colors" title="Отмена">✕</button>
+            </template>
+            <button v-else @click="startEditingTime('wakeTime')" class="header-btn flex items-center gap-1.5 px-1 py-1 cursor-pointer rounded">
+              <span class="text-base">☀️</span>
+              <span class="time-display">{{ activeSchedule?.wakeTime }}</span>
+            </button>
           </div>
         </div>
       </div>

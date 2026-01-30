@@ -89,6 +89,65 @@ export function getTimeDelta(oldTime, newTime) {
 }
 
 /**
+ * Проверяет, является ли строка валидным временем:
+ * - одна цифра или два (час): 7, 12 → 07:00, 12:00
+ * - HH:MM или H:MM (часы 0–23, минуты 0–59)
+ * @param {string} time - Строка времени (например, '12', '07:30', '7:30')
+ * @returns {boolean}
+ */
+export function isValidTime(time) {
+  if (!time || typeof time !== 'string') {
+    return false;
+  }
+  const trimmed = time.trim();
+  // Только час: одна или две цифры, 0–23
+  const onlyHour = trimmed.match(/^\d{1,2}$/);
+  if (onlyHour) {
+    const hours = parseInt(trimmed, 10);
+    return hours >= 0 && hours <= 23;
+  }
+  // HH:MM или H:MM
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return false;
+  }
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+/**
+ * Нормализует строку времени к формату HH:MM; при невалидном вводе возвращает null.
+ * Поддерживает: "12" → "12:00", "7" → "07:00", "07:30" → "07:30"
+ * @param {string} time - Строка времени
+ * @returns {string|null} 'HH:MM' или null
+ */
+export function normalizeTime(time) {
+  if (!time || typeof time !== 'string') {
+    return null;
+  }
+  const trimmed = time.trim();
+  // Только час: одна или две цифры, 0–23
+  const onlyHour = trimmed.match(/^\d{1,2}$/);
+  if (onlyHour) {
+    const hours = parseInt(trimmed, 10);
+    if (hours < 0 || hours > 23) return null;
+    return `${String(hours).padStart(2, '0')}:00`;
+  }
+  // HH:MM или H:MM
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/**
  * Генерирует UUID v4
  * @returns {string} UUID
  */

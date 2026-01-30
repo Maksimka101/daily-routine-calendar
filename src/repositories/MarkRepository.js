@@ -47,8 +47,8 @@ export class MarkRepository {
       mark.id = generateUUID();
       marks.push(mark);
     } else {
-      // Обновление существующей
-      const index = marks.findIndex(m => m.id === mark.id);
+      // Обновление существующей — ищем по id И scheduleId, чтобы не перезаписать засечку другого расписания
+      const index = marks.findIndex(m => m.id === mark.id && m.scheduleId === mark.scheduleId);
       if (index !== -1) {
         marks[index] = { ...marks[index], ...mark };
       } else {
@@ -74,7 +74,8 @@ export class MarkRepository {
         mark.id = generateUUID();
         marks.push(mark);
       } else {
-        const index = marks.findIndex(m => m.id === mark.id);
+        // Ищем по id И scheduleId, чтобы не перезаписать засечку другого расписания
+        const index = marks.findIndex(m => m.id === mark.id && m.scheduleId === mark.scheduleId);
         if (index !== -1) {
           marks[index] = { ...marks[index], ...mark };
         } else {
