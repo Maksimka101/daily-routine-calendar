@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Routine Calendar</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Кастомные стили для древовидной структуры */
+    .tree-trunk {
+      width: 3px;
+      background: linear-gradient(to bottom, #e5e5e5, #d4d4d4);
+    }
+
+    .branch-line {
+      height: 2px;
+      background: #e5e5e5;
+    }
+
+    .current-time-line {
+      height: 2px;
+      background: #ef4444;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    }
+
+    /* Показ кнопок при наведении */
+    .mark-item:hover .edit-buttons {
+      opacity: 1;
+    }
+
+    .tab-item:hover .tab-edit {
+      opacity: 1;
+    }
+
+    /* Плавные переходы */
+    .edit-buttons,
+    .tab-edit {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    /* Для мобильных - всегда показываем */
+    @media (max-width: 768px) {
+
+      .edit-buttons,
+      .tab-edit {
+        opacity: 1;
+      }
+    }
+
+    /* Убираем скроллбар но оставляем скролл */
+    .schedule-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: #e5e5e5 transparent;
+    }
+  </style>
+</head>
+
+<body class="bg-stone-50 min-h-screen">
+  <div id="app" class="max-w-2xl mx-auto px-4 py-8 md:py-16">
+
+    <!-- Заголовок -->
+    <header class="text-center mb-8">
+      <h1 class="text-2xl font-light text-stone-700 tracking-wide">Daily Routine</h1>
+    </header>
+
+    <!-- Настройки сна -->
+    <div class="flex justify-center gap-8 mb-8 text-sm">
+      <label class="flex items-center gap-2 text-stone-500">
+        <span>🌙 Сон в</span>
+        <input type="time" v-model="settings.bedtime"
+          class="bg-transparent border-b border-stone-300 px-1 py-0.5 text-stone-700 focus:outline-none focus:border-stone-500">
+      </label>
+      <label class="flex items-center gap-2 text-stone-500">
+        <span>☀️ Подъём</span>
+        <input type="time" v-model="settings.wakeTime"
+          class="bg-transparent border-b border-stone-300 px-1 py-0.5 text-stone-700 focus:outline-none focus:border-stone-500">
+      </label>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="flex justify-center gap-1 mb-8">
+      <div v-for="(schedule, index) in schedules" :key="schedule.id" class="tab-item relative group">
+        <button @click="activeSchedule = index" :class="[
+                  'px-4 py-1.5 rounded-full text-sm transition-colors',
+                  activeSchedule === index
+                    ? 'bg-stone-200 text-stone-700'
+                    : 'text-stone-400 hover:text-stone-600'
+                ]">
+          {{ schedule.name }}
+        </button>
+        <button v-if="schedules.length > 1" @click="deleteSchedule(index)"
+          class="tab-edit absolute -right-1 -top-1 w-4 h-4 bg-stone-300 hover:bg-red-400 text-white rounded-full text-xs flex items-center justify-center">
+          ×
+        </button>
+      </div>
+      <button @click="addSchedule" class="px-3 py-1.5 text-stone-300 hover:text-stone-500 text-sm">
+        +
+      </button>
+    </div>
+
+    <!-- Древовидное расписание -->
+    <div class="relative schedule-scroll">
+
+      <!-- Ствол дерева -->
+      <div class="absolute left-1/2 top-0 bottom-0 tree-trunk -translate-x-1/2"></div>
+
+      <!-- Красная линия текущего времени -->
+      <div v-if="currentTimePosition !== null" class="absolute left-0 right-0 current-time-line z-10 flex items-center"
+        :style="{ top: currentTimePosition + 'px' }">
+        <div class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full"></div>
+        <span class="absolute right-0 -translate-y-1/2 text-xs text-red-500 font-medium">
+          {{ currentTimeFormatted }}
+        </span>
+      </div>
+
+      <!-- Засечки -->
+      <div class="space-y-6 py-4">
+        <div v-for="(mark, index) in currentMarks" :key="mark.id" class="mark-item relative"
+          :class="index % 2 === 0 ? 'pr-[52%]' : 'pl-[52%]'">
+
+          <!-- Ветка -->
+          <div class="absolute top-3 branch-line" :class="index % 2 === 0 ? 'right-1/2 left-4' : 'left-1/2 right-4'">
+          </div>
+
+          <!-- Контент засечки -->
+          <div :class="['relative', index % 2 === 0 ? 'text-right' : 'text-left']">
+
+            <!-- Время и название -->
+            <div class="flex items-center gap-2" :class="index % 2 === 0 ? 'justify-end' : 'justify-start'">
+
+              <!-- Кнопки редактирования (слева для чётных) -->
+              <div v-if="index % 2 === 0" class="edit-buttons flex gap-1">
+                <button @click="editMark(index)" class="text-stone-300 hover:text-stone-500 text-xs">✎</button>
+                <button @click="deleteMark(index)" class="text-stone-300 hover:text-red-400 text-xs">×</button>
+              </div>
+
+              <span class="text-xs text-stone-400 font-mono">{{ mark.time }}</span>
+              <span class="text-lg">{{ mark.emoji }}</span>
+              <span class="text-sm font-medium text-stone-600">{{ mark.name }}</span>
+
+              <!-- Кнопки редактирования (справа для нечётных) -->
+              <div v-if="index % 2 !== 0" class="edit-buttons flex gap-1">
+                <button @click="editMark(index)" class="text-stone-300 hover:text-stone-500 text-xs">✎</button>
+                <button @click="deleteMark(index)" class="text-stone-300 hover:text-red-400 text-xs">×</button>
+              </div>
+            </div>
+
+            <!-- Описание -->
+            <p v-if="mark.description" class="text-xs text-stone-400 mt-1 max-w-xs"
+              :class="index % 2 === 0 ? 'ml-auto' : 'mr-auto'">
+              {{ mark.description }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Кнопка добавления засечки -->
+      <div class="flex justify-center mt-4">
+        <button @click="addMark" class="text-stone-300 hover:text-stone-500 text-sm flex items-center gap-1">
+          <span>+</span> добавить засечку
+        </button>
+      </div>
+    </div>
+
+    <!-- Модальное окно редактирования -->
+    <div v-if="editingMark !== null" class="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
+      @click.self="editingMark = null">
+      <div class="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl">
+        <h3 class="text-lg font-medium text-stone-700 mb-4">Редактировать засечку</h3>
+
+        <div class="space-y-4">
+          <div class="flex gap-3">
+            <input v-model="editForm.emoji" class="w-12 text-center text-2xl border border-stone-200 rounded-lg p-2"
+              placeholder="😊">
+            <input v-model="editForm.name" class="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-stone-700"
+              placeholder="Название">
+          </div>
+
+          <div class="flex gap-3">
+            <input type="time" v-model="editForm.time"
+              class="border border-stone-200 rounded-lg px-3 py-2 text-stone-700">
+            <label class="flex items-center gap-2 text-sm text-stone-500">
+              <input type="checkbox" v-model="editForm.relative" class="rounded">
+              <span>Относительно сна</span>
+            </label>
+          </div>
+
+          <div v-if="editForm.relative" class="flex gap-2 items-center">
+            <input type="number" v-model="editForm.offsetHours"
+              class="w-16 border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-center" placeholder="0">
+            <span class="text-stone-500 text-sm">ч. до сна</span>
+          </div>
+
+          <textarea v-model="editForm.description"
+            class="w-full border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm" rows="2"
+            placeholder="Описание (необязательно)"></textarea>
+        </div>
+
+        <div class="flex gap-2 mt-6">
+          <button @click="editingMark = null" class="flex-1 px-4 py-2 text-stone-500 hover:bg-stone-100 rounded-lg">
+            Отмена
+          </button>
+          <button @click="saveMark" class="flex-1 px-4 py-2 bg-stone-700 text-white rounded-lg hover:bg-stone-800">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, watch, onMounted, onUnmounted } = Vue
+
+    createApp({
+      setup() {
+        // Настройки
+        const settings = ref({
+          bedtime: '22:00',
+          wakeTime: '07:00'
+        })
+
+        // Дефолтные засечки (относительно времени сна)
+        const defaultMarks = [
+          { id: 1, emoji: '☀️', name: 'Подъём', time: '', relative: false, offsetHours: 0, description: 'Сон 8-9 часов для восстановления' },
+          { id: 2, emoji: '🍳', name: 'Завтрак', time: '', relative: false, offsetHours: 0, description: '' },
+          { id: 3, emoji: '☕', name: 'Последний кофе', time: '', relative: true, offsetHours: 10, description: 'Кофеин выводится ~10 часов' },
+          { id: 4, emoji: '🍽️', name: 'Обед', time: '13:00', relative: false, offsetHours: 0, description: '' },
+          { id: 5, emoji: '🏋️', name: 'Спортзал', time: '', relative: true, offsetHours: 4, description: 'Поесть углеводы за 1.5ч до тренировки' },
+          { id: 6, emoji: '🍲', name: 'Последняя еда', time: '', relative: true, offsetHours: 3, description: 'Не есть за 2-3 часа до сна' },
+          { id: 7, emoji: '📵', name: 'Без экранов', time: '', relative: true, offsetHours: 1, description: 'Синий свет мешает выработке мелатонина' },
+          { id: 8, emoji: '🛁', name: 'Подготовка ко сну', time: '', relative: true, offsetHours: 0.5, description: 'Душ, приглушить свет' },
+          { id: 9, emoji: '🌙', name: 'Сон', time: '', relative: false, offsetHours: 0, description: 'Спокойной ночи!' },
+        ]
+
+        // Расписания (вкладки)
+        const schedules = ref([
+          { id: 1, name: 'Обычный день', marks: JSON.parse(JSON.stringify(defaultMarks)) },
+        ])
+
+        const activeSchedule = ref(0)
+
+        // Текущее время
+        const currentTime = ref(new Date())
+        let timeInterval = null
+
+        onMounted(() => {
+          timeInterval = setInterval(() => {
+            currentTime.value = new Date()
+          }, 60000) // Обновляем раз в минуту
+        })
+
+        onUnmounted(() => {
+          if (timeInterval) clearInterval(timeInterval)
+        })
+
+        // Вычисляемые засечки с реальным временем
+        const currentMarks = computed(() => {
+          const marks = schedules.value[activeSchedule.value]?.marks || []
+          const bedtime = timeToMinutes(settings.value.bedtime)
+          const wakeTime = timeToMinutes(settings.value.wakeTime)
+
+          return marks.map(mark => {
+            let time = mark.time
+
+            if (mark.relative) {
+              // Вычисляем время относительно сна
+              let minutes = bedtime - (mark.offsetHours * 60)
+              if (minutes < 0) minutes += 24 * 60
+              time = minutesToTime(minutes)
+            } else if (mark.name === 'Подъём' || mark.name === 'Завтрак') {
+              // Специальные случаи
+              if (mark.name === 'Подъём') {
+                time = settings.value.wakeTime
+              } else if (mark.name === 'Завтрак') {
+                time = minutesToTime(wakeTime + 30)
+              }
+            } else if (mark.name === 'Сон') {
+              time = settings.value.bedtime
+            }
+
+            return { ...mark, time }
+          }).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+        })
+
+        // Позиция линии текущего времени
+        const currentTimePosition = computed(() => {
+          if (!currentMarks.value.length) return null
+
+          const now = currentTime.value.getHours() * 60 + currentTime.value.getMinutes()
+          const marks = currentMarks.value
+
+          const firstMarkTime = timeToMinutes(marks[0].time)
+          const lastMarkTime = timeToMinutes(marks[marks.length - 1].time)
+
+          // Если текущее время вне диапазона засечек
+          if (now < firstMarkTime || now > lastMarkTime) return null
+
+          // Находим позицию между засечками
+          const totalHeight = marks.length * 64 // примерная высота
+          const timeRange = lastMarkTime - firstMarkTime
+          const position = ((now - firstMarkTime) / timeRange) * totalHeight + 16
+
+          return position
+        })
+
+        const currentTimeFormatted = computed(() => {
+          return currentTime.value.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+        })
+
+        // Редактирование
+        const editingMark = ref(null)
+        const editForm = ref({
+          emoji: '',
+          name: '',
+          time: '',
+          relative: false,
+          offsetHours: 0,
+          description: ''
+        })
+
+        function editMark(index) {
+          const mark = currentMarks.value[index]
+          const originalMark = schedules.value[activeSchedule.value].marks.find(m => m.id === mark.id)
+          editForm.value = { ...originalMark }
+          editingMark.value = mark.id
+        }
+
+        function saveMark() {
+          const marks = schedules.value[activeSchedule.value].marks
+          const index = marks.findIndex(m => m.id === editingMark.value)
+          if (index !== -1) {
+            marks[index] = { ...editForm.value }
+          }
+          editingMark.value = null
+          saveToStorage()
+        }
+
+        function deleteMark(index) {
+          const mark = currentMarks.value[index]
+          const marks = schedules.value[activeSchedule.value].marks
+          const originalIndex = marks.findIndex(m => m.id === mark.id)
+          if (originalIndex !== -1) {
+            marks.splice(originalIndex, 1)
+            saveToStorage()
+          }
+        }
+
+        function addMark() {
+          const marks = schedules.value[activeSchedule.value].marks
+          const newId = Math.max(...marks.map(m => m.id), 0) + 1
+          editForm.value = {
+            id: newId,
+            emoji: '📌',
+            name: 'Новая засечка',
+            time: '12:00',
+            relative: false,
+            offsetHours: 0,
+            description: ''
+          }
+          marks.push({ ...editForm.value })
+          editingMark.value = newId
+        }
+
+        // Вкладки
+        function addSchedule() {
+          const newId = Math.max(...schedules.value.map(s => s.id), 0) + 1
+          schedules.value.push({
+            id: newId,
+            name: 'Новое расписание',
+            marks: JSON.parse(JSON.stringify(defaultMarks))
+          })
+          activeSchedule.value = schedules.value.length - 1
+          saveToStorage()
+        }
+
+        function deleteSchedule(index) {
+          if (schedules.value.length > 1) {
+            schedules.value.splice(index, 1)
+            if (activeSchedule.value >= schedules.value.length) {
+              activeSchedule.value = schedules.value.length - 1
+            }
+            saveToStorage()
+          }
+        }
+
+        // Хелперы
+        function timeToMinutes(time) {
+          if (!time) return 0
+          const [h, m] = time.split(':').map(Number)
+          return h * 60 + m
+        }
+
+        function minutesToTime(minutes) {
+          const h = Math.floor(minutes / 60) % 24
+          const m = minutes % 60
+          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+        }
+
+        // Сохранение в localStorage
+        function saveToStorage() {
+          localStorage.setItem('dailyRoutine', JSON.stringify({
+            settings: settings.value,
+            schedules: schedules.value,
+            activeSchedule: activeSchedule.value
+          }))
+        }
+
+        function loadFromStorage() {
+          const saved = localStorage.getItem('dailyRoutine')
+          if (saved) {
+            const data = JSON.parse(saved)
+            settings.value = data.settings
+            schedules.value = data.schedules
+            activeSchedule.value = data.activeSchedule
+          }
+        }
+
+        // Автосохранение
+        watch([settings, schedules, activeSchedule], saveToStorage, { deep: true })
+
+        // Загрузка при старте
+        onMounted(loadFromStorage)
+
+        return {
+          settings,
+          schedules,
+          activeSchedule,
+          currentMarks,
+          currentTime,
+          currentTimePosition,
+          currentTimeFormatted,
+          editingMark,
+          editForm,
+          editMark,
+          saveMark,
+          deleteMark,
+          addMark,
+          addSchedule,
+          deleteSchedule
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+
+</html>

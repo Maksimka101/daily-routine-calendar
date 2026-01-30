@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Routine Calendar</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Кастомная конфигурация Tailwind */
+    @layer base {
+      body {
+        font-feature-settings: 'tnum';
+      }
+    }
+
+    /* Тонкие линии древовидной структуры */
+    .trunk-line {
+      stroke: #d6d3d1;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .branch-line {
+      stroke: #d6d3d1;
+      stroke-width: 1;
+      fill: none;
+    }
+
+    /* Красная линия текущего времени */
+    .current-time-indicator {
+      background: linear-gradient(to right, transparent, #ef4444 20%, #ef4444 80%, transparent);
+    }
+
+    /* Tabular nums для времени */
+    .time-display {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+
+<body class="bg-white min-h-screen">
+  <div id="app">
+    <!-- Компактный Header -->
+    <header class="border-b border-stone-200">
+      <div class="max-w-3xl mx-auto px-8 py-3 flex justify-between items-center">
+        <!-- Вкладки расписаний -->
+        <div class="flex gap-1">
+          <button v-for="(schedule, index) in schedules" :key="schedule.id" @click="activeScheduleIndex = index" :class="[
+              'px-3 py-1 text-[13px] font-medium transition-colors duration-150',
+              activeScheduleIndex === index
+                ? 'text-stone-700'
+                : 'text-stone-400 hover:text-stone-600'
+            ]">
+            {{ schedule.name }}
+          </button>
+        </div>
+
+        <!-- Настройки времени сна -->
+        <div class="flex gap-6 items-center text-[13px] text-stone-600">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base">🌙</span>
+            <span class="time-display">{{ activeSchedule?.bedtime }}</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-base">☀️</span>
+            <span class="time-display">{{ activeSchedule?.wakeTime }}</span>
+          </div>
+          <!-- Debug кнопка -->
+          <button @click="regenerateMarks"
+            class="px-2 py-1 text-[11px] text-stone-400 hover:text-stone-600 hover:bg-stone-50 rounded transition-colors"
+            title="Перегенерировать засечки">
+            ↻ Debug
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Древовидное расписание -->
+    <main class="max-w-3xl mx-auto px-8 py-12">
+      <div class="relative" :style="{ minHeight: svgHeight + 'px' }">
+        <!-- SVG для ствола и веток -->
+        <svg class="absolute inset-0 w-full pointer-events-none" :style="{ height: svgHeight + 'px' }"
+          style="z-index: 1;">
+          <!-- Вертикальный ствол -->
+          <line class="trunk-line" x1="50%" y1="0" x2="50%" :y2="svgHeight" />
+
+          <!-- Горизонтальные ветки -->
+          <line v-for="(mark, index) in sortedMarks" :key="mark.id" class="branch-line"
+            :x1="index % 2 === 0 ? '50%' : '8%'" :y1="getMarkYPosition(index)" :x2="index % 2 === 0 ? '92%' : '50%'"
+            :y2="getMarkYPosition(index)" />
+        </svg>
+
+        <!-- Красная линия текущего времени (под деревом) -->
+        <div v-if="currentTimeYPosition !== null"
+          class="absolute left-0 right-0 h-px current-time-indicator pointer-events-none"
+          :style="{ top: (currentTimeYPosition - 0.5) + 'px', zIndex: 0 }">
+        </div>
+
+        <!-- Точка текущего времени (над деревом) -->
+        <div v-if="currentTimeYPosition !== null"
+          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          :style="{ top: currentTimeYPosition + 'px', zIndex: 3 }">
+          <!-- Точка на пересечении со стволом -->
+          <div class="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+          </div>
+        </div>
+
+        <!-- Засечки -->
+        <div class="relative" style="z-index: 2;">
+          <div v-for="(mark, index) in sortedMarks" :key="mark.id" :class="[
+              'absolute w-[37%]',
+              index % 2 === 0 ? 'right-[9.5%]' : 'left-[9.5%]'
+            ]" :style="{ top: (getMarkYPosition(index) - 25) + 'px' }">
+            <!-- НАД линией: emoji + время + название -->
+            <div class="flex items-center gap-2 mb-2 min-w-0 px-2">
+              <span class="text-[18px] leading-none flex-shrink-0">{{ mark.emoji }}</span>
+              <span class="text-[12px] text-stone-400 time-display leading-none flex-shrink-0">{{ mark.time }}</span>
+              <span class="text-[14px] text-stone-600 font-medium leading-tight truncate min-w-0">{{ mark.title
+                }}</span>
+            </div>
+
+            <!-- ПОД линией: описание -->
+            <div v-if="mark.description"
+              class="text-[12px] text-stone-400 leading-relaxed pl-2.5 pr-2 mt-2 line-clamp-3 break-words">
+              {{ mark.description }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="max-w-3xl mx-auto px-8 py-6">
+      <div class="text-[12px] text-stone-400 leading-relaxed pl-2.5 pr-2 mt-2 line-clamp-3 break-words">
+        Сделано с любовью Максимом Земляникиным для Максима Земляникина и всего человечества
+      </div>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { ScheduleService } from './src/services/ScheduleService.js';
+    import { MarkService } from './src/services/MarkService.js';
+
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    createApp({
+      setup() {
+        // Сервисы
+        const scheduleService = new ScheduleService();
+        const markService = new MarkService();
+
+        // Состояние
+        const schedules = ref([]);
+        const activeScheduleIndex = ref(0);
+        const marks = ref([]);
+        const currentTime = ref(new Date());
+
+        // Computed
+        const activeSchedule = computed(() => {
+          return schedules.value[activeScheduleIndex.value] || null;
+        });
+
+        const sortedMarks = computed(() => {
+          return [...marks.value].sort((a, b) => {
+            const timeA = timeToMinutes(a.time);
+            const timeB = timeToMinutes(b.time);
+            return timeA - timeB;
+          });
+        });
+
+        // Масштаб: пикселей на час (уменьшен для компактности)
+        const pixelsPerHour = 60;
+
+        // Временной диапазон календаря
+        const timeRange = computed(() => {
+          if (!sortedMarks.value.length) return { start: 0, end: 1440 };
+
+          const firstMarkTime = timeToMinutes(sortedMarks.value[0].time);
+          const lastMarkTime = timeToMinutes(sortedMarks.value[sortedMarks.value.length - 1].time);
+
+          // Добавляем по 30 минут в начале и конце
+          return {
+            start: Math.max(0, firstMarkTime - 30),
+            end: Math.min(1440, lastMarkTime + 30)
+          };
+        });
+
+        const svgHeight = computed(() => {
+          const range = timeRange.value.end - timeRange.value.start;
+          const hours = range / 60;
+          return hours * pixelsPerHour + 100;
+        });
+
+        const currentTimeLabel = computed(() => {
+          const h = String(currentTime.value.getHours()).padStart(2, '0');
+          const m = String(currentTime.value.getMinutes()).padStart(2, '0');
+          return `${h}:${m}`;
+        });
+
+        const currentTimeYPosition = computed(() => {
+          if (!sortedMarks.value.length) return null;
+
+          const now = currentTime.value.getHours() * 60 + currentTime.value.getMinutes();
+          const startTime = timeRange.value.start;
+          const endTime = timeRange.value.end;
+
+          // Проверяем, попадает ли текущее время в диапазон
+          if (now < startTime || now > endTime) return null;
+
+          // Вычисляем позицию пропорционально времени
+          const minutesFromStart = now - startTime;
+          const hoursFromStart = minutesFromStart / 60;
+
+          return hoursFromStart * pixelsPerHour + 50;
+        });
+
+        // Methods
+        function getMarkYPosition(index) {
+          const mark = sortedMarks.value[index];
+          if (!mark) return 50;
+
+          const markTime = timeToMinutes(mark.time);
+          const startTime = timeRange.value.start;
+
+          // Вычисляем позицию пропорционально времени
+          const minutesFromStart = markTime - startTime;
+          const hoursFromStart = minutesFromStart / 60;
+
+          return hoursFromStart * pixelsPerHour + 50;
+        }
+
+        function timeToMinutes(time) {
+          if (!time) return 0;
+          const [h, m] = time.split(':').map(Number);
+          return h * 60 + m;
+        }
+
+        function loadData() {
+          // Загружаем расписания
+          const loadedSchedules = scheduleService.getSchedules();
+
+          // Если нет расписаний, создаём дефолтное
+          if (loadedSchedules.length === 0) {
+            const defaultSchedule = scheduleService.createSchedule(
+              'Обычный день',
+              '07:00',
+              '22:00'
+            );
+            schedules.value = [defaultSchedule];
+          } else {
+            schedules.value = loadedSchedules;
+          }
+
+          // Загружаем засечки для активного расписания
+          if (activeSchedule.value) {
+            marks.value = markService.getMarks(activeSchedule.value.id);
+          }
+        }
+
+        function startTimeUpdates() {
+          // Обновляем текущее время каждую минуту
+          const interval = setInterval(() => {
+            currentTime.value = new Date();
+          }, 60000);
+
+          onUnmounted(() => {
+            clearInterval(interval);
+          });
+        }
+
+        // Lifecycle
+        onMounted(() => {
+          loadData();
+          startTimeUpdates();
+        });
+
+        // Watch для смены расписания
+        Vue.watch(activeScheduleIndex, () => {
+          if (activeSchedule.value) {
+            marks.value = markService.getMarks(activeSchedule.value.id);
+          }
+        });
+
+        // Debug: перегенерация засечек
+        function regenerateMarks() {
+          if (!activeSchedule.value) return;
+
+          // Удаляем все засечки текущего расписания
+          const currentMarks = markService.getMarks(activeSchedule.value.id);
+          currentMarks.forEach(mark => {
+            markService.deleteMark(mark.id);
+          });
+
+          // Создаём заново дефолтные засечки
+          markService.createDefaultMarks(
+            activeSchedule.value.id,
+            activeSchedule.value.wakeTime,
+            activeSchedule.value.bedtime
+          );
+
+          // Перезагружаем
+          marks.value = markService.getMarks(activeSchedule.value.id);
+
+          console.log('✓ Засечки перегенерированы');
+        }
+
+        return {
+          schedules,
+          activeScheduleIndex,
+          activeSchedule,
+          sortedMarks,
+          svgHeight,
+          currentTimeLabel,
+          currentTimeYPosition,
+          getMarkYPosition,
+          regenerateMarks
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+
+</html>
