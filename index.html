@@ -12,7 +12,7 @@
 <body class="page">
   <div id="app">
     <app-header :schedules="schedules" :active-schedule-index="activeScheduleIndex" :active-schedule="activeSchedule"
-      @update:active-schedule-index="activeScheduleIndex = $event" @create-schedule="handleCreateSchedule"
+      @update:active-schedule-index="handleActiveScheduleIndexChange" @create-schedule="handleCreateSchedule"
       @delete-schedule="handleDeleteSchedule" @update-schedule="handleUpdateSchedule"></app-header>
 
     <calendar-body :marks="marks" :current-time="currentTime"></calendar-body>
@@ -30,6 +30,7 @@
      */
     import { ScheduleService } from './src/services/ScheduleService.js';
     import { MarkService } from './src/services/MarkService.js';
+    import { SettingsService } from './src/services/SettingsService.js';
     import AppHeader from './src/components/AppHeader.js';
     import CalendarBody from './src/components/CalendarBody.js';
 
@@ -48,6 +49,7 @@
       setup() {
         const scheduleService = new ScheduleService();
         const markService = new MarkService();
+        const settingsService = new SettingsService();
 
         const schedules = ref([]);
         const activeScheduleIndex = ref(0);
@@ -77,9 +79,25 @@
             schedules.value = loadedSchedules;
           }
 
+          const settings = settingsService.load();
+          const idx = settings.activeScheduleId
+            ? schedules.value.findIndex(s => s.id === settings.activeScheduleId)
+            : -1;
+          activeScheduleIndex.value = idx >= 0 ? idx : 0;
+
           if (activeSchedule.value) {
             marks.value = markService.getMarks(activeSchedule.value.id);
           }
+        }
+
+        /**
+         * Переключает активную вкладку и сохраняет ID выбранного расписания в настройках.
+         * @param {number} index - Индекс расписания в списке
+         */
+        function handleActiveScheduleIndexChange(index) {
+          activeScheduleIndex.value = index;
+          const schedule = schedules.value[index];
+          if (schedule) settingsService.updateActiveSchedule(schedule.id);
         }
 
         /**
@@ -121,6 +139,7 @@
           const newSchedule = scheduleService.createSchedule(name, wakeTime, bedtime);
           schedules.value.push(newSchedule);
           activeScheduleIndex.value = schedules.value.length - 1;
+          settingsService.updateActiveSchedule(newSchedule.id);
 
           console.log('✓ Создано новое расписание:', name);
         }
@@ -145,6 +164,7 @@
             schedules.value.push(defaultSchedule);
             activeScheduleIndex.value = 0;
             marks.value = markService.getMarks(defaultSchedule.id);
+            settingsService.updateActiveSchedule(defaultSchedule.id);
             console.log('✓ Создано дефолтное расписание');
           } else {
             if (activeScheduleIndex.value >= schedules.value.length) {
@@ -152,8 +172,10 @@
             } else if (activeScheduleIndex.value > index) {
               activeScheduleIndex.value--;
             }
-            if (activeSchedule.value) {
-              marks.value = markService.getMarks(activeSchedule.value.id);
+            const newActive = schedules.value[activeScheduleIndex.value];
+            if (newActive) {
+              marks.value = markService.getMarks(newActive.id);
+              settingsService.updateActiveSchedule(newActive.id);
             }
             console.log('✓ Удалено расписание:', scheduleToDelete.name);
           }
@@ -176,6 +198,7 @@
           activeSchedule,
           marks,
           currentTime,
+          handleActiveScheduleIndexChange,
           handleCreateSchedule,
           handleDeleteSchedule,
           handleUpdateSchedule
