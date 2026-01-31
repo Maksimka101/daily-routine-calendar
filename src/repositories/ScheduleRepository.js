@@ -40,17 +40,14 @@ export class ScheduleRepository {
   save(schedule) {
     const schedules = this.getAll();
 
-    // Если id нет, генерируем новый (создание)
     if (!schedule.id) {
       schedule.id = generateUUID();
       schedules.push(schedule);
     } else {
-      // Обновление существующего
       const index = schedules.findIndex(s => s.id === schedule.id);
       if (index !== -1) {
         schedules[index] = { ...schedules[index], ...schedule };
       } else {
-        // Если не найдено, добавляем как новое
         schedules.push(schedule);
       }
     }

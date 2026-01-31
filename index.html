@@ -11,12 +11,10 @@
 
 <body class="page">
   <div id="app">
-    <!-- Header Component -->
     <app-header :schedules="schedules" :active-schedule-index="activeScheduleIndex" :active-schedule="activeSchedule"
       @update:active-schedule-index="activeScheduleIndex = $event" @create-schedule="handleCreateSchedule"
       @delete-schedule="handleDeleteSchedule" @update-schedule="handleUpdateSchedule"></app-header>
 
-    <!-- Calendar Body Component -->
     <calendar-body :marks="marks" :current-time="currentTime"></calendar-body>
 
     <footer class="container footer">
@@ -27,6 +25,9 @@
   </div>
 
   <script type="module">
+    /**
+     * @fileoverview Точка входа приложения: Vue 3 app с расписаниями и засечками
+     */
     import { ScheduleService } from './src/services/ScheduleService.js';
     import { MarkService } from './src/services/MarkService.js';
     import AppHeader from './src/components/AppHeader.js';
@@ -40,28 +41,31 @@
         CalendarBody
       },
 
+      /**
+       * Composition API setup: состояние, сервисы, обработчики и lifecycle.
+       * @returns {Object} Реактивные данные и методы для шаблона
+       */
       setup() {
-        // Сервисы
         const scheduleService = new ScheduleService();
         const markService = new MarkService();
 
-        // Состояние
         const schedules = ref([]);
         const activeScheduleIndex = ref(0);
         const marks = ref([]);
         const currentTime = ref(new Date());
 
-        // Computed
+        /** @type {import('vue').ComputedRef<import('./src/repositories/ScheduleRepository.js').Schedule|null>} */
         const activeSchedule = computed(() => {
           return schedules.value[activeScheduleIndex.value] || null;
         });
 
-        // Methods
+        /**
+         * Загружает расписания из сервиса; при пустом списке создаёт дефолтное "Обычный день".
+         * Загружает засечки для текущего активного расписания.
+         */
         function loadData() {
-          // Загружаем расписания
           const loadedSchedules = scheduleService.getSchedules();
 
-          // Если нет расписаний, создаём дефолтное
           if (loadedSchedules.length === 0) {
             const defaultSchedule = scheduleService.createSchedule(
               'Обычный день',
@@ -73,14 +77,15 @@
             schedules.value = loadedSchedules;
           }
 
-          // Загружаем засечки для активного расписания
           if (activeSchedule.value) {
             marks.value = markService.getMarks(activeSchedule.value.id);
           }
         }
 
+        /**
+         * Запускает обновление currentTime каждую минуту; при размонтировании очищает interval.
+         */
         function startTimeUpdates() {
-          // Обновляем текущее время каждую минуту
           const interval = setInterval(() => {
             currentTime.value = new Date();
           }, 60000);
@@ -90,39 +95,47 @@
           });
         }
 
+        /**
+         * Обновляет активное расписание (имя, wakeTime, bedtime) и перезагружает засечки.
+         * @param {{ name?: string, wakeTime?: string, bedtime?: string }} data - Поля для обновления
+         */
         function handleUpdateSchedule(data) {
           if (!activeSchedule.value) return;
           const updated = scheduleService.updateSchedule(activeSchedule.value.id, data);
           const index = activeScheduleIndex.value;
           schedules.value = schedules.value.map((s, i) => (i === index ? updated : s));
-          // Засечки пересчитываются в сервисе (shiftDefaultMarks), перезагружаем
+          // shiftDefaultMarks уже выполнен в сервисе — перезагружаем засечки
           marks.value = markService.getMarks(updated.id);
         }
 
+        /**
+         * Создаёт новое расписание с заданным именем, копируя wakeTime и bedtime из текущей вкладки.
+         * Переключает активную вкладку на новую.
+         * @param {string} name - Название нового расписания
+         */
         function handleCreateSchedule(name) {
-          // Копируем время из текущей активной вкладки
           const currentSchedule = activeSchedule.value;
           const wakeTime = currentSchedule?.wakeTime || '07:00';
           const bedtime = currentSchedule?.bedtime || '22:00';
 
-          // Создаём новое расписание
           const newSchedule = scheduleService.createSchedule(name, wakeTime, bedtime);
           schedules.value.push(newSchedule);
-
-          // Переключаемся на новую вкладку
           activeScheduleIndex.value = schedules.value.length - 1;
 
           console.log('✓ Создано новое расписание:', name);
         }
 
+        /**
+         * Удаляет расписание по индексу; при удалении последнего создаёт дефолтное "Обычный день".
+         * Переключает активную вкладку на соседнюю при необходимости.
+         * @param {number} index - Индекс удаляемого расписания в списке
+         */
         function handleDeleteSchedule(index) {
           const scheduleToDelete = schedules.value[index];
 
-          // Удаляем расписание (также удалит все связанные засечки)
           scheduleService.deleteSchedule(scheduleToDelete.id);
           schedules.value.splice(index, 1);
 
-          // Если удалили последнее — создаём новое дефолтное расписание
           if (schedules.value.length === 0) {
             const defaultSchedule = scheduleService.createSchedule(
               'Обычный день',
@@ -134,7 +147,6 @@
             marks.value = markService.getMarks(defaultSchedule.id);
             console.log('✓ Создано дефолтное расписание');
           } else {
-            // Переключаемся на соседнюю вкладку
             if (activeScheduleIndex.value >= schedules.value.length) {
               activeScheduleIndex.value = schedules.value.length - 1;
             } else if (activeScheduleIndex.value > index) {
@@ -147,13 +159,11 @@
           }
         }
 
-        // Lifecycle
         onMounted(() => {
           loadData();
           startTimeUpdates();
         });
 
-        // Watch для смены расписания
         Vue.watch(activeScheduleIndex, () => {
           if (activeSchedule.value) {
             marks.value = markService.getMarks(activeSchedule.value.id);

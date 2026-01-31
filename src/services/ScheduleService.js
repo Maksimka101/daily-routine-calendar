@@ -45,8 +45,6 @@ export class ScheduleService {
     };
 
     const savedSchedule = this.scheduleRepository.save(schedule);
-
-    // Создаём дефолтные засечки
     this.markService.createDefaultMarks(savedSchedule.id, wakeTime, bedtime);
 
     return savedSchedule;
@@ -62,7 +60,6 @@ export class ScheduleService {
    * @returns {Schedule} Обновлённое расписание
    */
   updateSchedule(id, data) {
-    // Получаем текущее расписание
     const schedules = this.scheduleRepository.getAll();
     const currentSchedule = schedules.find(s => s.id === id);
 
@@ -73,7 +70,6 @@ export class ScheduleService {
     const oldWakeTime = currentSchedule.wakeTime;
     const oldBedtime = currentSchedule.bedtime;
 
-    // Обновляем расписание
     const updatedSchedule = {
       ...currentSchedule,
       ...data
@@ -81,7 +77,6 @@ export class ScheduleService {
 
     const savedSchedule = this.scheduleRepository.save(updatedSchedule);
 
-    // Если изменились времена, сдвигаем дефолтные засечки
     const wakeTimeChanged = data.wakeTime && data.wakeTime !== oldWakeTime;
     const bedtimeChanged = data.bedtime && data.bedtime !== oldBedtime;
 
@@ -103,9 +98,7 @@ export class ScheduleService {
    * @param {string} id - ID расписания
    */
   deleteSchedule(id) {
-    // Сначала удаляем все засечки
     this.markRepository.deleteByScheduleId(id);
-    // Затем удаляем само расписание
     this.scheduleRepository.delete(id);
   }
 
@@ -119,31 +112,21 @@ export class ScheduleService {
    */
   shiftDefaultMarks(scheduleId, oldWakeTime, newWakeTime, oldBedtime, newBedtime) {
     const marks = this.markRepository.getByScheduleId(scheduleId);
-
-    // Вычисляем сдвиги
     const wakeDelta = getTimeDelta(oldWakeTime, newWakeTime);
     const bedDelta = getTimeDelta(oldBedtime, newBedtime);
 
-    // Обрабатываем каждую засечку
     marks.forEach(mark => {
-      // Проверяем, является ли засечка дефолтной
       if (!this.markRepository.isDefaultMark(mark.id)) {
-        // Пользовательская засечка — не трогаем
         return;
       }
 
-      // Определяем, к какой группе относится засечка
       let delta = 0;
-
       if (MORNING_MARKS.includes(mark.id)) {
-        // Утренняя засечка — сдвигаем на wakeDelta
         delta = wakeDelta;
       } else if (EVENING_MARKS.includes(mark.id)) {
-        // Вечерняя засечка — сдвигаем на bedDelta
         delta = bedDelta;
       }
 
-      // Сдвигаем время, только если есть изменение
       if (delta !== 0) {
         const newTime = shiftTime(mark.time, delta);
         mark.time = newTime;

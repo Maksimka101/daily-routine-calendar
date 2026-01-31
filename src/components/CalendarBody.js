@@ -18,6 +18,10 @@ export default {
   },
 
   computed: {
+    /**
+     * Засечки, отсортированные по времени (от раннего к позднему).
+     * @returns {import('../repositories/MarkRepository.js').Mark[]}
+     */
     sortedMarks() {
       return [...this.marks].sort((a, b) => {
         const timeA = this.timeToMinutes(a.time);
@@ -26,31 +30,44 @@ export default {
       });
     },
 
-    // Масштаб: пикселей на час
+    /**
+     * Масштаб: пикселей на один час (60px = 1ч).
+     * @returns {number}
+     */
     pixelsPerHour() {
       return 60;
     },
 
-    // Временной диапазон календаря
+    /**
+     * Временной диапазон календаря в минутах от полуночи: от первой засечки −30 мин до последней +30 мин.
+     * @returns {{ start: number, end: number }}
+     */
     timeRange() {
       if (!this.sortedMarks.length) return { start: 0, end: 1440 };
 
       const firstMarkTime = this.timeToMinutes(this.sortedMarks[0].time);
       const lastMarkTime = this.timeToMinutes(this.sortedMarks[this.sortedMarks.length - 1].time);
 
-      // Добавляем по 30 минут в начале и конце
       return {
         start: Math.max(0, firstMarkTime - 30),
         end: Math.min(1440, lastMarkTime + 30)
       };
     },
 
+    /**
+     * Высота SVG календаря в пикселях: (диапазон в минутах / 60) * pixelsPerHour + 100.
+     * @returns {number}
+     */
     svgHeight() {
       const range = this.timeRange.end - this.timeRange.start;
       const hours = range / 60;
       return hours * this.pixelsPerHour + 100;
     },
 
+    /**
+     * Y-позиция красной линии текущего времени в пикселях; null, если текущее время вне диапазона засечек.
+     * @returns {number|null}
+     */
     currentTimeYPosition() {
       if (!this.sortedMarks.length) return null;
 
@@ -58,10 +75,8 @@ export default {
       const startTime = this.timeRange.start;
       const endTime = this.timeRange.end;
 
-      // Проверяем, попадает ли текущее время в диапазон
       if (now < startTime || now > endTime) return null;
 
-      // Вычисляем позицию пропорционально времени
       const minutesFromStart = now - startTime;
       const hoursFromStart = minutesFromStart / 60;
 
@@ -70,6 +85,11 @@ export default {
   },
 
   methods: {
+    /**
+     * Возвращает Y-координату засечки на SVG (пиксели от верха).
+     * @param {number} index - Индекс засечки в sortedMarks
+     * @returns {number}
+     */
     getMarkYPosition(index) {
       const mark = this.sortedMarks[index];
       if (!mark) return 50;
@@ -77,13 +97,17 @@ export default {
       const markTime = this.timeToMinutes(mark.time);
       const startTime = this.timeRange.start;
 
-      // Вычисляем позицию пропорционально времени
       const minutesFromStart = markTime - startTime;
       const hoursFromStart = minutesFromStart / 60;
 
       return hoursFromStart * this.pixelsPerHour + 50;
     },
 
+    /**
+     * Преобразует строку времени 'HH:MM' в минуты от полуночи.
+     * @param {string} [time] - Время в формате 'HH:MM'
+     * @returns {number}
+     */
     timeToMinutes(time) {
       if (!time) return 0;
       const [h, m] = time.split(':').map(Number);

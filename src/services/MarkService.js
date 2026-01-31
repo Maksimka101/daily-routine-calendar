@@ -60,7 +60,6 @@ export class MarkService {
    * @returns {Mark} Обновлённая засечка
    */
   updateMark(id, data) {
-    // Получаем существующую засечку
     const allMarks = this.repository._getAll();
     const existingMark = allMarks.find(m => m.id === id);
 
@@ -95,7 +94,6 @@ export class MarkService {
     const wakeMinutes = parseTime(wakeTime);
     const bedMinutes = parseTime(bedtime);
 
-    // Создаём утренние засечки (относительно wakeTime)
     const morningMarks = MORNING_MARK_TEMPLATES.map(template => ({
       id: template.id,
       scheduleId,
@@ -105,7 +103,6 @@ export class MarkService {
       time: formatTime(wakeMinutes + template.offsetMinutes)
     }));
 
-    // Создаём вечерние засечки (относительно bedtime)
     const eveningMarks = EVENING_MARK_TEMPLATES.map(template => ({
       id: template.id,
       scheduleId,

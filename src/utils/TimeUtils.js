@@ -35,7 +35,6 @@ export function parseTime(time) {
  * formatTime(1439) // '23:59'
  */
 export function formatTime(minutes) {
-  // Нормализуем минуты (обработка отрицательных и больших значений)
   let normalizedMinutes = minutes % (24 * 60);
   if (normalizedMinutes < 0) {
     normalizedMinutes += 24 * 60;
@@ -77,8 +76,7 @@ export function getTimeDelta(oldTime, newTime) {
   const newMinutes = parseTime(newTime);
   let delta = newMinutes - oldMinutes;
 
-  // Обрабатываем случай перехода через полночь
-  // Если разница больше 12 часов, скорее всего это переход через полночь
+  // Разница >12 ч — скорее всего переход через полночь (23:00 → 01:00)
   if (delta > 12 * 60) {
     delta -= 24 * 60;
   } else if (delta < -12 * 60) {
@@ -100,13 +98,11 @@ export function isValidTime(time) {
     return false;
   }
   const trimmed = time.trim();
-  // Только час: одна или две цифры, 0–23
   const onlyHour = trimmed.match(/^\d{1,2}$/);
   if (onlyHour) {
     const hours = parseInt(trimmed, 10);
     return hours >= 0 && hours <= 23;
   }
-  // HH:MM или H:MM
   const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) {
     return false;
@@ -127,14 +123,12 @@ export function normalizeTime(time) {
     return null;
   }
   const trimmed = time.trim();
-  // Только час: одна или две цифры, 0–23
   const onlyHour = trimmed.match(/^\d{1,2}$/);
   if (onlyHour) {
     const hours = parseInt(trimmed, 10);
     if (hours < 0 || hours > 23) return null;
     return `${String(hours).padStart(2, '0')}:00`;
   }
-  // HH:MM или H:MM
   const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) {
     return null;

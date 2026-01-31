@@ -24,5 +24,3 @@ export {
   EVENING_MARK_TEMPLATES,
   DEFAULT_MARK_TEMPLATES
 } from './constants/defaultMarks.js';
-
-export { ScheduleView } from './ui/ScheduleView.js';

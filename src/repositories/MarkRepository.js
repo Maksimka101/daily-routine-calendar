@@ -29,8 +29,6 @@ export class MarkRepository {
   getByScheduleId(scheduleId) {
     const allMarks = this._getAll();
     const marks = allMarks.filter(m => m.scheduleId === scheduleId);
-
-    // Сортируем по времени
     return marks.sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }
 
@@ -42,17 +40,15 @@ export class MarkRepository {
   save(mark) {
     const marks = this._getAll();
 
-    // Если id нет, генерируем UUID (пользовательская засечка)
     if (!mark.id) {
       mark.id = generateUUID();
       marks.push(mark);
     } else {
-      // Обновление существующей — ищем по id И scheduleId, чтобы не перезаписать засечку другого расписания
+      // id + scheduleId: одна и та же дефолтная засечка может быть в разных расписаниях
       const index = marks.findIndex(m => m.id === mark.id && m.scheduleId === mark.scheduleId);
       if (index !== -1) {
         marks[index] = { ...marks[index], ...mark };
       } else {
-        // Если не найдено, добавляем как новую
         marks.push(mark);
       }
     }
@@ -74,7 +70,6 @@ export class MarkRepository {
         mark.id = generateUUID();
         marks.push(mark);
       } else {
-        // Ищем по id И scheduleId, чтобы не перезаписать засечку другого расписания
         const index = marks.findIndex(m => m.id === mark.id && m.scheduleId === mark.scheduleId);
         if (index !== -1) {
           marks[index] = { ...marks[index], ...mark };

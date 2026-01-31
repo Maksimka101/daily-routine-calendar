@@ -35,24 +35,36 @@ export default {
   },
 
   methods: {
+    /**
+     * Переключает активную вкладку расписания.
+     * @param {number} index - Индекс расписания в списке
+     */
     selectSchedule(index) {
       this.$emit('update:activeScheduleIndex', index);
     },
 
+    /**
+     * Включает режим создания новой вкладки: показывает input и фокусирует его.
+     */
     startCreatingSchedule() {
       this.isCreatingSchedule = true;
       this.newScheduleName = '';
-      // Focus на input после рендера
       this.$nextTick(() => {
         this.$refs.newScheduleInput?.focus();
       });
     },
 
+    /**
+     * Отменяет создание новой вкладки: закрывает input и сбрасывает имя.
+     */
     cancelCreation() {
       this.isCreatingSchedule = false;
       this.newScheduleName = '';
     },
 
+    /**
+     * Создаёт новое расписание с введённым именем и эмитит createSchedule; при пустом имени — отмена.
+     */
     createNewSchedule() {
       const name = this.newScheduleName.trim();
       if (!name) {
@@ -64,11 +76,20 @@ export default {
       this.cancelCreation();
     },
 
+    /**
+     * Удаляет расписание по индексу; эмитит deleteSchedule. Останавливает всплытие, чтобы не переключить вкладку.
+     * @param {number} index - Индекс расписания в списке
+     * @param {Event} event - Событие клика (для stopPropagation)
+     */
     deleteSchedule(index, event) {
-      event.stopPropagation(); // Предотвращаем переключение на вкладку
+      event.stopPropagation();
       this.$emit('deleteSchedule', index);
     },
 
+    /**
+     * Включает режим редактирования времени (bedtime или wakeTime): подставляет текущее значение и фокусирует input.
+     * @param {'bedtime'|'wakeTime'} field - Поле времени для редактирования
+     */
     startEditingTime(field) {
       if (!this.activeSchedule) return;
       this.editingTimeField = field;
@@ -79,11 +100,17 @@ export default {
       });
     },
 
+    /**
+     * Отменяет редактирование времени: сбрасывает поле и значение.
+     */
     cancelEditingTime() {
       this.editingTimeField = null;
       this.editingTimeValue = '';
     },
 
+    /**
+     * Применяет отредактированное время: нормализует строку, эмитит updateSchedule с новым значением; при невалидном вводе — отмена.
+     */
     applyTimeEdit() {
       const normalized = normalizeTime(this.editingTimeValue);
       if (!normalized) {
