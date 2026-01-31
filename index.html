@@ -6,16 +6,169 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Routine Calendar</title>
   <link rel="stylesheet" href="./src/styles/main.css">
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script type="module">
+    import { appData } from './src/appData.js';
+    document.addEventListener('alpine:init', () => {
+      window.Alpine.data('app', appData);
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 </head>
 
 <body class="page">
-  <div id="app">
-    <app-header :schedules="schedules" :active-schedule-index="activeScheduleIndex" :active-schedule="activeSchedule"
-      @update:active-schedule-index="handleActiveScheduleIndexChange" @create-schedule="handleCreateSchedule"
-      @delete-schedule="handleDeleteSchedule" @update-schedule="handleUpdateSchedule"></app-header>
+  <div id="app" x-data="app" x-init="init()">
+    <!-- AppHeader: вкладки расписаний и настройки времени -->
+    <header class="header">
+      <div class="container header__inner">
+        <div class="header__tabs">
+          <template x-for="schedule in schedules" :key="schedule.id">
+            <button
+              type="button"
+              @click="selectScheduleById(schedule.id)"
+              :class="['header-tab', activeScheduleIndex === scheduleIndex(schedule.id) ? 'header-tab--active' : 'header-tab--inactive']"
+            >
+              <span x-text="schedule.name"></span>
+              <span
+                @click="deleteScheduleById(schedule.id, $event)"
+                class="header-tab__delete"
+                title="Удалить расписание"
+              >⌫</span>
+            </button>
+          </template>
 
-    <calendar-body :marks="marks" :current-time="currentTime"></calendar-body>
+          <template x-if="!isCreatingSchedule">
+            <button
+              type="button"
+              @click="startCreatingSchedule()"
+              class="header-add"
+              title="Создать новое расписание"
+            >
+              <span>+</span>
+              <span>добавить</span>
+            </button>
+          </template>
+          <template x-if="isCreatingSchedule">
+            <div class="header-create">
+              <input
+                x-ref="newScheduleInput"
+                x-model="newScheduleName"
+                @keyup.enter="createNewSchedule()"
+                @keydown.escape.prevent="cancelCreation()"
+                type="text"
+                placeholder="Название..."
+                class="header-create__input"
+              />
+              <button type="button" @click="createNewSchedule()" class="header-create__btn header-create__btn--confirm" title="Создать">✓</button>
+              <button type="button" @click="cancelCreation()" class="header-create__btn header-create__btn--cancel" title="Отмена">✕</button>
+            </div>
+          </template>
+        </div>
+
+        <div class="header__times">
+          <!-- Время сна -->
+          <div class="header-time">
+            <template x-if="editingTimeField === 'bedtime'">
+              <div class="header-time-edit">
+                <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
+                <input
+                  x-ref="bedtimeInput"
+                  x-model="editingTimeValue"
+                  @keyup.enter="applyTimeEdit()"
+                  @keydown.escape.prevent="cancelEditingTime()"
+                  type="text"
+                  placeholder="22:00"
+                  maxlength="5"
+                  class="header-time-edit__input time-display"
+                />
+                <button type="button" @click="applyTimeEdit()" class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime()" class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+              </div>
+            </template>
+            <template x-if="editingTimeField !== 'bedtime'">
+              <button type="button" @click="startEditingTime('bedtime')" class="header-time__btn">
+                <span class="header-time__emoji">🌙</span>
+                <span class="time-display" x-text="activeSchedule?.bedtime ?? ''"></span>
+              </button>
+            </template>
+          </div>
+          <!-- Время подъёма -->
+          <div class="header-time">
+            <template x-if="editingTimeField === 'wakeTime'">
+              <div class="header-time-edit">
+                <span class="header-time__emoji header-time__emoji--spaced">☀️</span>
+                <input
+                  x-ref="wakeTimeInput"
+                  x-model="editingTimeValue"
+                  @keyup.enter="applyTimeEdit()"
+                  @keydown.escape.prevent="cancelEditingTime()"
+                  type="text"
+                  placeholder="07:00"
+                  maxlength="5"
+                  class="header-time-edit__input time-display"
+                />
+                <button type="button" @click="applyTimeEdit()" class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime()" class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+              </div>
+            </template>
+            <template x-if="editingTimeField !== 'wakeTime'">
+              <button type="button" @click="startEditingTime('wakeTime')" class="header-time__btn">
+                <span class="header-time__emoji">☀️</span>
+                <span class="time-display" x-text="activeSchedule?.wakeTime ?? ''"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CalendarBody: древовидное расписание с засечками -->
+    <main class="container calendar">
+      <div class="calendar__wrap" :style="'min-height: ' + svgHeight + 'px'">
+        <svg class="calendar__svg" :style="'height: ' + svgHeight + 'px'">
+          <line class="trunk-line" x1="50%" y1="0" x2="50%" :y2="svgHeight" />
+        </svg>
+        <div class="calendar__branches" :style="'height: ' + svgHeight + 'px'">
+          <template x-for="(mark, idx) in sortedMarks" :key="idx">
+            <div class="branch-wrap" :style="'top: ' + (getMarkYPositionByMark(mark) - 0.5) + 'px'">
+              <svg class="branch-svg" viewBox="0 0 100 1" preserveAspectRatio="none">
+                <line class="branch-line" :x1="idx % 2 === 0 ? 50 : 8" y1="0.5" :x2="idx % 2 === 0 ? 92 : 50" y2="0.5" />
+              </svg>
+            </div>
+          </template>
+        </div>
+
+        <template x-if="currentTimeYPosition !== null">
+          <div
+            class="current-time-indicator"
+            :style="'top: ' + (currentTimeYPosition - 0.5) + 'px'"
+          ></div>
+        </template>
+
+        <template x-if="currentTimeYPosition !== null">
+          <div class="current-time-dot-wrap" :style="'top: ' + currentTimeYPosition + 'px'">
+            <div class="current-time-dot"></div>
+          </div>
+        </template>
+
+        <div class="calendar__marks">
+          <template x-for="(mark, idx) in sortedMarks" :key="idx">
+            <div
+              :class="['calendar-mark', idx % 2 === 0 ? 'calendar-mark--right' : 'calendar-mark--left']"
+              :style="'top: ' + (getMarkYPositionByMark(mark) - 25) + 'px'"
+            >
+              <div class="calendar-mark__row">
+                <span class="calendar-mark__emoji" x-text="mark.emoji"></span>
+                <span class="calendar-mark__time time-display" x-text="mark.time"></span>
+                <span class="calendar-mark__title" x-text="mark.title"></span>
+              </div>
+              <template x-if="mark.description">
+                <div class="calendar-mark__desc" x-text="mark.description"></div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </main>
 
     <footer class="container footer">
       <div class="footer__text">
@@ -23,189 +176,6 @@
       </div>
     </footer>
   </div>
-
-  <script type="module">
-    /**
-     * @fileoverview Точка входа приложения: Vue 3 app с расписаниями и засечками
-     */
-    import { ScheduleService } from './src/services/ScheduleService.js';
-    import { MarkService } from './src/services/MarkService.js';
-    import { SettingsService } from './src/services/SettingsService.js';
-    import AppHeader from './src/components/AppHeader.js';
-    import CalendarBody from './src/components/CalendarBody.js';
-
-    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
-
-    createApp({
-      components: {
-        AppHeader,
-        CalendarBody
-      },
-
-      /**
-       * Composition API setup: состояние, сервисы, обработчики и lifecycle.
-       * @returns {Object} Реактивные данные и методы для шаблона
-       */
-      setup() {
-        const scheduleService = new ScheduleService();
-        const markService = new MarkService();
-        const settingsService = new SettingsService();
-
-        const schedules = ref([]);
-        const activeScheduleIndex = ref(0);
-        const marks = ref([]);
-        const currentTime = ref(new Date());
-
-        /** @type {import('vue').ComputedRef<import('./src/repositories/ScheduleRepository.js').Schedule|null>} */
-        const activeSchedule = computed(() => {
-          return schedules.value[activeScheduleIndex.value] || null;
-        });
-
-        /**
-         * Загружает расписания из сервиса; при пустом списке создаёт дефолтное "Обычный день".
-         * Загружает засечки для текущего активного расписания.
-         */
-        function loadData() {
-          const loadedSchedules = scheduleService.getSchedules();
-
-          if (loadedSchedules.length === 0) {
-            const defaultSchedule = scheduleService.createSchedule(
-              'Обычный день',
-              '07:00',
-              '22:00'
-            );
-            schedules.value = [defaultSchedule];
-          } else {
-            schedules.value = loadedSchedules;
-          }
-
-          const settings = settingsService.load();
-          const idx = settings.activeScheduleId
-            ? schedules.value.findIndex(s => s.id === settings.activeScheduleId)
-            : -1;
-          activeScheduleIndex.value = idx >= 0 ? idx : 0;
-
-          if (activeSchedule.value) {
-            marks.value = markService.getMarks(activeSchedule.value.id);
-          }
-        }
-
-        /**
-         * Переключает активную вкладку и сохраняет ID выбранного расписания в настройках.
-         * @param {number} index - Индекс расписания в списке
-         */
-        function handleActiveScheduleIndexChange(index) {
-          activeScheduleIndex.value = index;
-          const schedule = schedules.value[index];
-          if (schedule) settingsService.updateActiveSchedule(schedule.id);
-        }
-
-        /**
-         * Запускает обновление currentTime каждую минуту; при размонтировании очищает interval.
-         */
-        function startTimeUpdates() {
-          const interval = setInterval(() => {
-            currentTime.value = new Date();
-          }, 60000);
-
-          onUnmounted(() => {
-            clearInterval(interval);
-          });
-        }
-
-        /**
-         * Обновляет активное расписание (имя, wakeTime, bedtime) и перезагружает засечки.
-         * @param {{ name?: string, wakeTime?: string, bedtime?: string }} data - Поля для обновления
-         */
-        function handleUpdateSchedule(data) {
-          if (!activeSchedule.value) return;
-          const updated = scheduleService.updateSchedule(activeSchedule.value.id, data);
-          const index = activeScheduleIndex.value;
-          schedules.value = schedules.value.map((s, i) => (i === index ? updated : s));
-          // shiftDefaultMarks уже выполнен в сервисе — перезагружаем засечки
-          marks.value = markService.getMarks(updated.id);
-        }
-
-        /**
-         * Создаёт новое расписание с заданным именем, копируя wakeTime и bedtime из текущей вкладки.
-         * Переключает активную вкладку на новую.
-         * @param {string} name - Название нового расписания
-         */
-        function handleCreateSchedule(name) {
-          const currentSchedule = activeSchedule.value;
-          const wakeTime = currentSchedule?.wakeTime || '07:00';
-          const bedtime = currentSchedule?.bedtime || '22:00';
-
-          const newSchedule = scheduleService.createSchedule(name, wakeTime, bedtime);
-          schedules.value.push(newSchedule);
-          activeScheduleIndex.value = schedules.value.length - 1;
-          settingsService.updateActiveSchedule(newSchedule.id);
-
-          console.log('✓ Создано новое расписание:', name);
-        }
-
-        /**
-         * Удаляет расписание по индексу; при удалении последнего создаёт дефолтное "Обычный день".
-         * Переключает активную вкладку на соседнюю при необходимости.
-         * @param {number} index - Индекс удаляемого расписания в списке
-         */
-        function handleDeleteSchedule(index) {
-          const scheduleToDelete = schedules.value[index];
-
-          scheduleService.deleteSchedule(scheduleToDelete.id);
-          schedules.value.splice(index, 1);
-
-          if (schedules.value.length === 0) {
-            const defaultSchedule = scheduleService.createSchedule(
-              'Обычный день',
-              '07:00',
-              '22:00'
-            );
-            schedules.value.push(defaultSchedule);
-            activeScheduleIndex.value = 0;
-            marks.value = markService.getMarks(defaultSchedule.id);
-            settingsService.updateActiveSchedule(defaultSchedule.id);
-            console.log('✓ Создано дефолтное расписание');
-          } else {
-            if (activeScheduleIndex.value >= schedules.value.length) {
-              activeScheduleIndex.value = schedules.value.length - 1;
-            } else if (activeScheduleIndex.value > index) {
-              activeScheduleIndex.value--;
-            }
-            const newActive = schedules.value[activeScheduleIndex.value];
-            if (newActive) {
-              marks.value = markService.getMarks(newActive.id);
-              settingsService.updateActiveSchedule(newActive.id);
-            }
-            console.log('✓ Удалено расписание:', scheduleToDelete.name);
-          }
-        }
-
-        onMounted(() => {
-          loadData();
-          startTimeUpdates();
-        });
-
-        Vue.watch(activeScheduleIndex, () => {
-          if (activeSchedule.value) {
-            marks.value = markService.getMarks(activeSchedule.value.id);
-          }
-        });
-
-        return {
-          schedules,
-          activeScheduleIndex,
-          activeSchedule,
-          marks,
-          currentTime,
-          handleActiveScheduleIndexChange,
-          handleCreateSchedule,
-          handleDeleteSchedule,
-          handleUpdateSchedule
-        };
-      }
-    }).mount('#app');
-  </script>
 </body>
 
 </html>

@@ -41,10 +41,10 @@ function getMarks(scheduleId) {
 
 ### Frontend фреймворк и стили
 
-**Vue 3** через CDN
+**Alpine.js 3** через CDN (лёгкая замена Vue без тяжёлой сборки)
 
 ```html
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 ```
 
 **Чистый CSS** — стили в `src/styles/main.css`, подключение через `<link rel="stylesheet" href="./src/styles/main.css">`. Без utility-фреймворков; классы семантические (например, `.header`, `.calendar-mark`, `.time-display`).
@@ -228,54 +228,41 @@ createDefaultMarks(scheduleId: string, wakeTime: string, bedtime: string): Mark[
 
 ---
 
-## UI Components Layer
+## UI Layer (Alpine.js)
 
-Компоненты Vue 3, отвечающие за отображение UI.
+UI реализован на **Alpine.js 3**: разметка в `index.html`, состояние и логика в `src/appData.js`, регистрация через `Alpine.data('app', appData)`.
 
-### AppHeader
+### Шапка (Header)
 
-**Расположение:** `src/components/AppHeader.js`
+**Назначение:** Вкладки расписаний, создание/удаление вкладок, настройки времени сна и подъёма.
 
-**Назначение:** Компонент шапки с вкладками расписаний и настройками времени
+**Состояние (в appData):**
+- `schedules`, `activeScheduleIndex`, `activeSchedule` (геттер)
+- `isCreatingSchedule`, `newScheduleName` — режим создания вкладки
+- `editingTimeField`, `editingTimeValue` — режим редактирования времени (bedtime / wakeTime)
 
-**Props:**
-- `schedules: Array` — список всех расписаний
-- `activeScheduleIndex: Number` — индекс активной вкладки
-- `activeSchedule: Object` — текущее активное расписание
-
-**Emits:**
-- `update:activeScheduleIndex` — при переключении вкладки
-- `createSchedule(name: string)` — при создании нового расписания
-
-**Внутренний State:**
-- `isCreatingSchedule: boolean` — режим создания вкладки
-- `newScheduleName: string` — имя новой вкладки
+**Методы:** `selectSchedule`, `startCreatingSchedule`, `cancelCreation`, `createNewSchedule`, `deleteSchedule`, `startEditingTime`, `cancelEditingTime`, `applyTimeEdit`.
 
 **Особенности:**
 - Фиксированная высота 52px для предотвращения скачков
 - Hover effect с карточкой на фоне (классы `.header-tab`, `.header-add`, `.header-time__btn`)
 - Кнопки создания (✓/✕) рядом с полем ввода
 
-### CalendarBody
+### Тело календаря (Calendar Body)
 
-**Расположение:** `src/components/CalendarBody.js`
+**Назначение:** Древовидное расписание с засечками и красной линией текущего времени.
 
-**Назначение:** Компонент древовидного расписания с засечками
+**Состояние и геттеры (в appData):**
+- `marks`, `currentTime`
+- `sortedMarks` — засечки: утро → середина дня → сон
+- `timeRange`, `rangeWraps`, `totalRangeMinutes`, `svgHeight`, `currentTimeYPosition`
 
-**Props:**
-- `marks: Array` — список засечек для отображения
-- `currentTime: Date` — текущее время для красной линии
-
-**Computed:**
-- `sortedMarks` — засечки, отсортированные по времени
-- `timeRange` — диапазон времени для отображения
-- `svgHeight` — вычисленная высота SVG календаря
-- `currentTimeYPosition` — позиция красной линии
+**Методы:** `getMarkYPosition`, `timeToMinutes`, `minutesFromRangeStart`.
 
 **Особенности:**
 - Пропорциональное масштабирование (60px = 1 час)
-- Автоматический расчет высоты на основе засечек
-- Красная линия текущего времени с точкой
+- Автоматический расчёт высоты SVG на основе засечек
+- Красная линия текущего времени с точкой (z-index по CONCEPT.md)
 
 ---
 
@@ -283,10 +270,9 @@ createDefaultMarks(scheduleId: string, wakeTime: string, bedtime: string): Mark[
 
 ```
 ┌─────────────────────────────────────────┐
-│             UI Components               │
-│  ┌─────────────┐    ┌───────────────┐   │
-│  │  AppHeader  │    │ CalendarBody  │   │
-│  └──────┬──────┘    └───────┬───────┘   │
+│            UI (Alpine.js)                 │
+│  index.html + src/appData.js            │
+│  Header (вкладки, время) │ Calendar      │
 └─────────┼────────────────────┼───────────┘
           │                    │
           ▼                    ▼

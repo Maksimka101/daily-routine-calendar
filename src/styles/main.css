@@ -344,6 +344,27 @@ body {
   z-index: 1;
 }
 
+.calendar__branches {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.branch-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.branch-svg {
+  display: block;
+  width: 100%;
+  height: 1px;
+}
+
 .trunk-line {
   stroke: var(--color-stone-300);
   stroke-width: 1.5;
