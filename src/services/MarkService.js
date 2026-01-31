@@ -19,12 +19,13 @@ export class MarkService {
   }
 
   /**
-   * Возвращает все засечки для расписания
+   * Возвращает засечки расписания, отсортированные по времени.
    * @param {string} scheduleId - ID расписания
-   * @returns {Mark[]} Массив засечек
+   * @returns {Mark[]} Массив засечек, отсортированный по времени
    */
   getMarks(scheduleId) {
-    return this.repository.getByScheduleId(scheduleId);
+    const raw = this.repository.getByScheduleId(scheduleId);
+    return [...raw].sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }
 
   /**

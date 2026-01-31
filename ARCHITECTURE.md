@@ -257,7 +257,7 @@ UI реализован на **Alpine.js 3**: разметка в `index.html`, 
 - `sortedMarks` — засечки: утро → середина дня → сон
 - `timeRange`, `rangeWraps`, `totalRangeMinutes`, `svgHeight`, `currentTimeYPosition`
 
-**Методы:** `getMarkYPosition`, `timeToMinutes`, `minutesFromRangeStart`.
+**Методы:** `getMarkYPosition`, `parseTime`, `minutesFromRangeStart`.
 
 **Особенности:**
 - Пропорциональное масштабирование (60px = 1 час)

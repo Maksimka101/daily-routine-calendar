@@ -22,44 +22,29 @@
       <div class="container header__inner">
         <div class="header__tabs">
           <template x-for="schedule in schedules" :key="schedule.id">
-            <button
-              type="button"
-              @click="selectScheduleById(schedule.id)"
-              :class="['header-tab', activeScheduleIndex === scheduleIndex(schedule.id) ? 'header-tab--active' : 'header-tab--inactive']"
-            >
+            <button type="button" @click="selectScheduleById(schedule.id)"
+              :class="['header-tab', activeScheduleIndex === scheduleIndex(schedule.id) ? 'header-tab--active' : 'header-tab--inactive']">
               <span x-text="schedule.name"></span>
-              <span
-                @click="deleteScheduleById(schedule.id, $event)"
-                class="header-tab__delete"
-                title="Удалить расписание"
-              >⌫</span>
+              <span @click="deleteScheduleById(schedule.id, $event)" class="header-tab__delete"
+                title="Удалить расписание">⌫</span>
             </button>
           </template>
 
           <template x-if="!isCreatingSchedule">
-            <button
-              type="button"
-              @click="startCreatingSchedule()"
-              class="header-add"
-              title="Создать новое расписание"
-            >
+            <button type="button" @click="startCreatingSchedule()" class="header-add" title="Создать новое расписание">
               <span>+</span>
               <span>добавить</span>
             </button>
           </template>
           <template x-if="isCreatingSchedule">
             <div class="header-create">
-              <input
-                x-ref="newScheduleInput"
-                x-model="newScheduleName"
-                @keyup.enter="createNewSchedule()"
-                @keydown.escape.prevent="cancelCreation()"
-                type="text"
-                placeholder="Название..."
-                class="header-create__input"
-              />
-              <button type="button" @click="createNewSchedule()" class="header-create__btn header-create__btn--confirm" title="Создать">✓</button>
-              <button type="button" @click="cancelCreation()" class="header-create__btn header-create__btn--cancel" title="Отмена">✕</button>
+              <input x-ref="newScheduleInput" x-model="newScheduleName" @keyup.enter="createNewSchedule()"
+                @keydown.escape.prevent="cancelCreation()" type="text" placeholder="Название..."
+                class="header-create__input" />
+              <button type="button" @click="createNewSchedule()" class="header-create__btn header-create__btn--confirm"
+                title="Создать">✓</button>
+              <button type="button" @click="cancelCreation()" class="header-create__btn header-create__btn--cancel"
+                title="Отмена">✕</button>
             </div>
           </template>
         </div>
@@ -70,18 +55,13 @@
             <template x-if="editingTimeField === 'bedtime'">
               <div class="header-time-edit">
                 <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
-                <input
-                  x-ref="bedtimeInput"
-                  x-model="editingTimeValue"
-                  @keyup.enter="applyTimeEdit()"
-                  @keydown.escape.prevent="cancelEditingTime()"
-                  type="text"
-                  placeholder="22:00"
-                  maxlength="5"
-                  class="header-time-edit__input time-display"
-                />
-                <button type="button" @click="applyTimeEdit()" class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
-                <button type="button" @click="cancelEditingTime()" class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+                <input x-ref="bedtimeInput" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
+                  @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="22:00" maxlength="5"
+                  class="header-time-edit__input time-display" />
+                <button type="button" @click="applyTimeEdit()"
+                  class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime()"
+                  class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
               </div>
             </template>
             <template x-if="editingTimeField !== 'bedtime'">
@@ -96,18 +76,13 @@
             <template x-if="editingTimeField === 'wakeTime'">
               <div class="header-time-edit">
                 <span class="header-time__emoji header-time__emoji--spaced">☀️</span>
-                <input
-                  x-ref="wakeTimeInput"
-                  x-model="editingTimeValue"
-                  @keyup.enter="applyTimeEdit()"
-                  @keydown.escape.prevent="cancelEditingTime()"
-                  type="text"
-                  placeholder="07:00"
-                  maxlength="5"
-                  class="header-time-edit__input time-display"
-                />
-                <button type="button" @click="applyTimeEdit()" class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
-                <button type="button" @click="cancelEditingTime()" class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+                <input x-ref="wakeTimeInput" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
+                  @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="07:00" maxlength="5"
+                  class="header-time-edit__input time-display" />
+                <button type="button" @click="applyTimeEdit()"
+                  class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime()"
+                  class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
               </div>
             </template>
             <template x-if="editingTimeField !== 'wakeTime'">
@@ -131,17 +106,15 @@
           <template x-for="(mark, idx) in sortedMarks" :key="idx">
             <div class="branch-wrap" :style="'top: ' + (getMarkYPositionByMark(mark) - 0.5) + 'px'">
               <svg class="branch-svg" viewBox="0 0 100 1" preserveAspectRatio="none">
-                <line class="branch-line" :x1="idx % 2 === 0 ? 50 : 8" y1="0.5" :x2="idx % 2 === 0 ? 92 : 50" y2="0.5" />
+                <line class="branch-line" :x1="idx % 2 === 0 ? 50 : 8" y1="0.5" :x2="idx % 2 === 0 ? 92 : 50"
+                  y2="0.5" />
               </svg>
             </div>
           </template>
         </div>
 
         <template x-if="currentTimeYPosition !== null">
-          <div
-            class="current-time-indicator"
-            :style="'top: ' + (currentTimeYPosition - 0.5) + 'px'"
-          ></div>
+          <div class="current-time-indicator" :style="'top: ' + (currentTimeYPosition - 0.5) + 'px'"></div>
         </template>
 
         <template x-if="currentTimeYPosition !== null">
@@ -152,10 +125,8 @@
 
         <div class="calendar__marks">
           <template x-for="(mark, idx) in sortedMarks" :key="idx">
-            <div
-              :class="['calendar-mark', idx % 2 === 0 ? 'calendar-mark--right' : 'calendar-mark--left']"
-              :style="'top: ' + (getMarkYPositionByMark(mark) - 25) + 'px'"
-            >
+            <div :class="['calendar-mark', idx % 2 === 0 ? 'calendar-mark--right' : 'calendar-mark--left']"
+              :style="'top: ' + (getMarkYPositionByMark(mark) - 25) + 'px'">
               <div class="calendar-mark__row">
                 <span class="calendar-mark__emoji" x-text="mark.emoji"></span>
                 <span class="calendar-mark__time time-display" x-text="mark.time"></span>

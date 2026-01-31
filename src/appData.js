@@ -6,8 +6,8 @@
 import { ScheduleService } from './services/ScheduleService.js';
 import { MarkService } from './services/MarkService.js';
 import { SettingsService } from './services/SettingsService.js';
-import { normalizeTime } from './utils/TimeUtils.js';
-import { MORNING_MARKS, SLEEP_MARK_ID } from './constants/defaultMarks.js';
+import { normalizeTime, parseTime } from './utils/TimeUtils.js';
+import { SLEEP_MARK_ID } from './constants/defaultMarks.js';
 
 /**
  * @typedef {Object} Schedule
@@ -31,11 +31,8 @@ import { MORNING_MARKS, SLEEP_MARK_ID } from './constants/defaultMarks.js';
  * @typedef {{ start: number, end: number }} TimeRangeMinutes - диапазон в минутах от полуночи
  */
 
-/** Для сортировки засечек: время после полуночи + MINUTES_PER_DAY = «следующий день». */
+/** Минуты в сутках (для диапазонов времени). */
 const MINUTES_PER_DAY = 24 * 60;
-
-/** Время до которого считаем «сегодня»; после — «следующий день» для порядка. */
-const DAY_CUTOFF_MINUTES = 6 * 60;
 
 /**
  * Возвращает объект состояния и методов для Alpine.data('app').
@@ -71,23 +68,14 @@ export function appData() {
       return this.schedules[this.activeScheduleIndex] || null;
     },
 
-    /** Засечки: утро → середина дня → сон. @returns {Mark[]} */
+    /** Засечки: утро → середина дня → сон. Если сон по времени раньше подъёма — сон и всё до него в конец. @returns {Mark[]} */
     get sortedMarks() {
-      const morning = this.marks
-        .filter(m => MORNING_MARKS.includes(m.id))
-        .sort((a, b) => this.timeToMinutes(a.time) - this.timeToMinutes(b.time));
-      const sleep = this.marks.find(m => m.id === SLEEP_MARK_ID);
-      const middle = this.marks.filter(
-        m => !MORNING_MARKS.includes(m.id) && m.id !== SLEEP_MARK_ID
-      );
-      middle.sort((a, b) => {
-        const ta = this.timeToMinutes(a.time);
-        const tb = this.timeToMinutes(b.time);
-        const keyA = ta < DAY_CUTOFF_MINUTES ? ta + MINUTES_PER_DAY : ta;
-        const keyB = tb < DAY_CUTOFF_MINUTES ? tb + MINUTES_PER_DAY : tb;
-        return keyA - keyB;
-      });
-      return sleep ? [...morning, ...middle, sleep] : [...morning, ...middle];
+      const wakeIndex = this.marks.findIndex(m => m.id === 'wake');
+      const sleepIndex = this.marks.findIndex(m => m.id === SLEEP_MARK_ID);
+      if (sleepIndex >= 0 && wakeIndex >= 0 && sleepIndex < wakeIndex) {
+        return [...this.marks.slice(sleepIndex + 1), ...this.marks.slice(0, sleepIndex + 1)];
+      }
+      return this.marks;
     },
 
     /** Масштаб: пикселей на один час (CONCEPT: 60px = 1ч). @returns {number} */
@@ -98,8 +86,8 @@ export function appData() {
     /** Диапазон от первой засечки −30 мин до последней +30 мин. @returns {TimeRangeMinutes} */
     get timeRange() {
       if (!this.sortedMarks.length) return { start: 0, end: MINUTES_PER_DAY };
-      const firstMarkTime = this.timeToMinutes(this.sortedMarks[0].time);
-      const lastMarkTime = this.timeToMinutes(this.sortedMarks[this.sortedMarks.length - 1].time);
+      const firstMarkTime = parseTime(this.sortedMarks[0].time);
+      const lastMarkTime = parseTime(this.sortedMarks[this.sortedMarks.length - 1].time);
       return {
         start: Math.max(0, firstMarkTime - 30),
         end: Math.min(MINUTES_PER_DAY, lastMarkTime + 30)
@@ -234,11 +222,6 @@ export function appData() {
       }
     },
 
-    /** @param {number} index - Индекс расписания в списке */
-    selectSchedule(index) {
-      this.handleActiveScheduleIndexChange(index);
-    },
-
     /** @param {string} scheduleId - ID расписания
      * @returns {number} Индекс в schedules или -1
      */
@@ -296,11 +279,6 @@ export function appData() {
       this.cancelCreation();
     },
 
-    /** @param {number} index @param {Event} [event] */
-    deleteSchedule(index, event) {
-      this.handleDeleteSchedule(index, event);
-    },
-
     /**
      * Включает режим редактирования времени (bedtime или wakeTime).
      * @param {'bedtime'|'wakeTime'} field - Поле времени для редактирования
@@ -354,20 +332,9 @@ export function appData() {
     getMarkYPosition(index) {
       const mark = this.sortedMarks[index];
       if (!mark) return 50;
-      const markTime = this.timeToMinutes(mark.time);
+      const markTime = parseTime(mark.time);
       const minutesFromStart = this.minutesFromRangeStart(markTime);
       return (minutesFromStart / 60) * this.pixelsPerHour + 50;
-    },
-
-    /**
-     * Преобразует строку времени 'HH:MM' в минуты от полуночи.
-     * @param {string} [time] - Время в формате 'HH:MM'
-     * @returns {number}
-     */
-    timeToMinutes(time) {
-      if (!time) return 0;
-      const [h, m] = time.split(':').map(Number);
-      return h * 60 + m;
     },
 
     /** Вызывается Alpine при инициализации: loadData, startTimeUpdates, $watch activeScheduleIndex. */
