@@ -47,11 +47,7 @@ function getMarks(scheduleId) {
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 ```
 
-**Tailwind CSS** через CDN
-
-```html
-<script src="https://cdn.tailwindcss.com"></script>
-```
+**Чистый CSS** — стили в `src/styles/main.css`, подключение через `<link rel="stylesheet" href="./src/styles/main.css">`. Без utility-фреймворков; классы семантические (например, `.header`, `.calendar-mark`, `.time-display`).
 
 ---
 
@@ -253,8 +249,8 @@ createDefaultMarks(scheduleId: string, wakeTime: string, bedtime: string): Mark[
 
 **Особенности:**
 - Фиксированная высота 52px для предотвращения скачков
-- Hover effect с карточкой на фоне (класс `.header-btn`)
-- Кнопки создания (✓/✕) встроены в border input'а
+- Hover effect с карточкой на фоне (классы `.header-tab`, `.header-add`, `.header-time__btn`)
+- Кнопки создания (✓/✕) рядом с полем ввода
 
 ### CalendarBody
 

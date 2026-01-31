@@ -5,67 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Routine Calendar</title>
+  <link rel="stylesheet" href="./src/styles/main.css">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* Кастомная конфигурация Tailwind */
-    @layer base {
-      body {
-        font-feature-settings: 'tnum';
-      }
-    }
-
-    /* Тонкие линии древовидной структуры */
-    .trunk-line {
-      stroke: #d6d3d1;
-      stroke-width: 1.5;
-      fill: none;
-    }
-
-    .branch-line {
-      stroke: #d6d3d1;
-      stroke-width: 1;
-      fill: none;
-    }
-
-    /* Красная линия текущего времени */
-    .current-time-indicator {
-      background: linear-gradient(to right, transparent, #ef4444 20%, #ef4444 80%, transparent);
-    }
-
-    /* Tabular nums для времени */
-    .time-display {
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Hover effect для кнопок header */
-    .header-btn {
-      position: relative;
-      border-radius: 0.25rem;
-    }
-
-    .header-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-color: #f5f5f4;
-      border-radius: 0.25rem;
-      opacity: 0;
-      transition: opacity 150ms ease;
-      z-index: -1;
-    }
-
-    .header-btn:hover::before {
-      opacity: 1;
-    }
-
-    .header-btn:hover {
-      color: #57534e;
-    }
-  </style>
 </head>
 
-<body class="bg-white min-h-screen">
+<body class="page">
   <div id="app">
     <!-- Header Component -->
     <app-header :schedules="schedules" :active-schedule-index="activeScheduleIndex" :active-schedule="activeSchedule"
@@ -75,8 +19,8 @@
     <!-- Calendar Body Component -->
     <calendar-body :marks="marks" :current-time="currentTime"></calendar-body>
 
-    <footer class="max-w-3xl mx-auto px-8 py-6">
-      <div class="text-[12px] text-stone-400 leading-relaxed pl-2.5 pr-2 mt-2 line-clamp-3 break-words">
+    <footer class="container footer">
+      <div class="footer__text">
         Сделано с любовью Максимом Земляникиным для Максима Земляникина и всего человечества
       </div>
     </footer>

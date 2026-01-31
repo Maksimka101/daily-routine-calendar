@@ -92,13 +92,12 @@ export default {
   },
 
   template: `
-    <main class="max-w-3xl mx-auto px-8 py-12">
-      <div class="relative" :style="{ minHeight: svgHeight + 'px' }">
+    <main class="container calendar">
+      <div class="calendar__wrap" :style="{ minHeight: svgHeight + 'px' }">
         <!-- SVG для ствола и веток -->
         <svg
-          class="absolute inset-0 w-full pointer-events-none"
+          class="calendar__svg"
           :style="{ height: svgHeight + 'px' }"
-          style="z-index: 1;"
         >
           <!-- Вертикальный ствол -->
           <line class="trunk-line" x1="50%" y1="0" x2="50%" :y2="svgHeight" />
@@ -118,45 +117,37 @@ export default {
         <!-- Красная линия текущего времени (под деревом) -->
         <div
           v-if="currentTimeYPosition !== null"
-          class="absolute left-0 right-0 h-px current-time-indicator pointer-events-none"
-          :style="{ top: (currentTimeYPosition - 0.5) + 'px', zIndex: 0 }"
+          class="current-time-indicator"
+          :style="{ top: (currentTimeYPosition - 0.5) + 'px' }"
         >
         </div>
 
         <!-- Точка текущего времени (над деревом) -->
         <div
           v-if="currentTimeYPosition !== null"
-          class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-          :style="{ top: currentTimeYPosition + 'px', zIndex: 3 }"
+          class="current-time-dot-wrap"
+          :style="{ top: currentTimeYPosition + 'px' }"
         >
-          <!-- Точка на пересечении со стволом -->
-          <div class="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]">
-          </div>
+          <div class="current-time-dot"></div>
         </div>
 
         <!-- Засечки -->
-        <div class="relative" style="z-index: 2;">
+        <div class="calendar__marks">
           <div
             v-for="(mark, index) in sortedMarks"
             :key="mark.id"
-            :class="[
-              'absolute w-[37%]',
-              index % 2 === 0 ? 'right-[9.5%]' : 'left-[9.5%]'
-            ]"
+            :class="['calendar-mark', index % 2 === 0 ? 'calendar-mark--right' : 'calendar-mark--left']"
             :style="{ top: (getMarkYPosition(index) - 25) + 'px' }"
           >
             <!-- НАД линией: emoji + время + название -->
-            <div class="flex items-center gap-2 mb-2 min-w-0 px-2">
-              <span class="text-[18px] leading-none flex-shrink-0">{{ mark.emoji }}</span>
-              <span class="text-[12px] text-stone-400 time-display leading-none flex-shrink-0">{{ mark.time }}</span>
-              <span class="text-[14px] text-stone-600 font-medium leading-tight truncate min-w-0">{{ mark.title }}</span>
+            <div class="calendar-mark__row">
+              <span class="calendar-mark__emoji">{{ mark.emoji }}</span>
+              <span class="calendar-mark__time time-display">{{ mark.time }}</span>
+              <span class="calendar-mark__title">{{ mark.title }}</span>
             </div>
 
             <!-- ПОД линией: описание -->
-            <div
-              v-if="mark.description"
-              class="text-[12px] text-stone-400 leading-relaxed pl-2.5 pr-2 mt-2 line-clamp-5 break-words"
-            >
+            <div v-if="mark.description" class="calendar-mark__desc">
               {{ mark.description }}
             </div>
           </div>

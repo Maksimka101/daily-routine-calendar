@@ -97,26 +97,23 @@ export default {
   },
 
   template: `
-    <header class="border-b border-stone-200">
-      <div class="max-w-3xl mx-auto px-8 h-[52px] flex justify-between items-center">
+    <header class="header">
+      <div class="container header__inner">
         <!-- Вкладки расписаний -->
-        <div class="flex items-center">
+        <div class="header__tabs">
           <button
             v-for="(schedule, index) in schedules"
             :key="schedule.id"
             @click="selectSchedule(index)"
             :class="[
-              'header-btn px-3 py-1 text-[13px] font-medium transition-all duration-150 flex items-center gap-1 group',
-              activeScheduleIndex === index
-                ? 'text-stone-700'
-                : 'text-stone-400'
+              'header-tab',
+              activeScheduleIndex === index ? 'header-tab--active' : 'header-tab--inactive'
             ]"
           >
             <span>{{ schedule.name }}</span>
-            <!-- Кнопка удаления - место всегда зарезервировано, показывается при hover на любую вкладку -->
             <span
               @click="deleteSchedule(index, $event)"
-              class="text-[11px] transition-all duration-150 text-stone-400 hover:text-red-500 opacity-0 group-hover:opacity-100 cursor-pointer"
+              class="header-tab__delete"
               title="Удалить расписание"
             >
               🗑️
@@ -127,14 +124,14 @@ export default {
           <div v-if="!isCreatingSchedule">
             <button
               @click="startCreatingSchedule"
-              class="header-btn px-2 py-1 text-[13px] text-stone-400 transition-all duration-150 flex items-center gap-1.5"
+              class="header-add"
               title="Создать новое расписание"
             >
               <span>+</span>
               <span>добавить</span>
             </button>
           </div>
-          <div v-else class="flex items-center gap-1 h-[28px]">
+          <div v-else class="header-create">
             <input
               ref="newScheduleInput"
               v-model="newScheduleName"
@@ -142,19 +139,18 @@ export default {
               @keyup.escape="cancelCreation"
               type="text"
               placeholder="Название..."
-              class="px-2 py-1 h-[28px] text-[13px] bg-stone-50 rounded focus:outline-none focus:bg-stone-100 w-36 transition-colors"
+              class="header-create__input"
             />
-            <!-- Кнопки рядом -->
             <button
               @click="createNewSchedule"
-              class="px-2 h-full text-[13px] text-stone-600 hover:text-stone-700 transition-colors"
+              class="header-create__btn header-create__btn--confirm"
               title="Создать"
             >
               ✓
             </button>
             <button
               @click="cancelCreation"
-              class="px-2 h-full text-[13px] text-stone-400 hover:text-stone-600 transition-colors"
+              class="header-create__btn header-create__btn--cancel"
               title="Отмена"
             >
               ✕
@@ -163,48 +159,52 @@ export default {
         </div>
 
         <!-- Настройки времени сна -->
-        <div class="flex gap-6 items-center text-[13px] text-stone-600">
+        <div class="header__times">
           <!-- Время сна -->
-          <div class="flex items-center">
+          <div class="header-time">
             <template v-if="editingTimeField === 'bedtime'">
-              <span class="text-base mr-1.5">🌙</span>
-              <input
-                ref="bedtimeInput"
-                v-model="editingTimeValue"
-                @keyup.enter="applyTimeEdit"
-                @keyup.escape="cancelEditingTime"
-                type="text"
-                placeholder="22:00"
-                maxlength="5"
-                class="px-2 py-1 h-[28px] text-[13px] bg-stone-50 rounded focus:outline-none focus:bg-stone-100 w-14 transition-colors time-display"
-              />
-              <button type="button" @click="applyTimeEdit" class="px-1.5 h-[28px] text-[13px] text-stone-600 hover:text-stone-700 transition-colors" title="Применить">✓</button>
-              <button type="button" @click="cancelEditingTime" class="px-1.5 h-[28px] text-[13px] text-stone-400 hover:text-stone-600 transition-colors" title="Отмена">✕</button>
+              <div class="header-time-edit">
+                <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
+                <input
+                  ref="bedtimeInput"
+                  v-model="editingTimeValue"
+                  @keyup.enter="applyTimeEdit"
+                  @keyup.escape="cancelEditingTime"
+                  type="text"
+                  placeholder="22:00"
+                  maxlength="5"
+                  class="header-time-edit__input time-display"
+                />
+                <button type="button" @click="applyTimeEdit" class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime" class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+              </div>
             </template>
-            <button v-else @click="startEditingTime('bedtime')" class="header-btn flex items-center gap-1.5 px-1 py-1 cursor-pointer rounded">
-              <span class="text-base">🌙</span>
+            <button v-else @click="startEditingTime('bedtime')" class="header-time__btn">
+              <span class="header-time__emoji">🌙</span>
               <span class="time-display">{{ activeSchedule?.bedtime }}</span>
             </button>
           </div>
           <!-- Время подъёма -->
-          <div class="flex items-center">
+          <div class="header-time">
             <template v-if="editingTimeField === 'wakeTime'">
-              <span class="text-base mr-1.5">☀️</span>
-              <input
-                ref="wakeTimeInput"
-                v-model="editingTimeValue"
-                @keyup.enter="applyTimeEdit"
-                @keyup.escape="cancelEditingTime"
-                type="text"
-                placeholder="07:00"
-                maxlength="5"
-                class="px-2 py-1 h-[28px] text-[13px] bg-stone-50 rounded focus:outline-none focus:bg-stone-100 w-14 transition-colors time-display"
-              />
-              <button type="button" @click="applyTimeEdit" class="px-1.5 h-[28px] text-[13px] text-stone-600 hover:text-stone-700 transition-colors" title="Применить">✓</button>
-              <button type="button" @click="cancelEditingTime" class="px-1.5 h-[28px] text-[13px] text-stone-400 hover:text-stone-600 transition-colors" title="Отмена">✕</button>
+              <div class="header-time-edit">
+                <span class="header-time__emoji header-time__emoji--spaced">☀️</span>
+                <input
+                  ref="wakeTimeInput"
+                  v-model="editingTimeValue"
+                  @keyup.enter="applyTimeEdit"
+                  @keyup.escape="cancelEditingTime"
+                  type="text"
+                  placeholder="07:00"
+                  maxlength="5"
+                  class="header-time-edit__input time-display"
+                />
+                <button type="button" @click="applyTimeEdit" class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime" class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+              </div>
             </template>
-            <button v-else @click="startEditingTime('wakeTime')" class="header-btn flex items-center gap-1.5 px-1 py-1 cursor-pointer rounded">
-              <span class="text-base">☀️</span>
+            <button v-else @click="startEditingTime('wakeTime')" class="header-time__btn">
+              <span class="header-time__emoji">☀️</span>
               <span class="time-display">{{ activeSchedule?.wakeTime }}</span>
             </button>
           </div>
