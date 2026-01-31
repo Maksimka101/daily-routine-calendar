@@ -3,6 +3,14 @@
  * Компонент древовидного расписания с засечками
  */
 
+import { MORNING_MARKS, SLEEP_MARK_ID } from '../constants/defaultMarks.js';
+
+/** Для сортировки: время после полуночи + MINUTES_PER_DAY = «следующий день». */
+const MINUTES_PER_DAY = 24 * 60;
+
+/** Время до которого считаем «сегодня»; после — «следующий день» для порядка. */
+const DAY_CUTOFF_MINUTES = 6 * 60;
+
 export default {
   name: 'CalendarBody',
 
@@ -19,15 +27,28 @@ export default {
 
   computed: {
     /**
-     * Засечки, отсортированные по времени (от раннего к позднему).
+     * Засечки для отображения: утро всегда первое, сон всегда последний, остальные между ними в порядке дня.
      * @returns {import('../repositories/MarkRepository.js').Mark[]}
      */
     sortedMarks() {
-      return [...this.marks].sort((a, b) => {
-        const timeA = this.timeToMinutes(a.time);
-        const timeB = this.timeToMinutes(b.time);
-        return timeA - timeB;
+      const morning = this.marks
+        .filter(m => MORNING_MARKS.includes(m.id))
+        .sort((a, b) => this.timeToMinutes(a.time) - this.timeToMinutes(b.time));
+
+      const sleep = this.marks.find(m => m.id === SLEEP_MARK_ID);
+
+      const middle = this.marks.filter(
+        m => !MORNING_MARKS.includes(m.id) && m.id !== SLEEP_MARK_ID
+      );
+      middle.sort((a, b) => {
+        const ta = this.timeToMinutes(a.time);
+        const tb = this.timeToMinutes(b.time);
+        const keyA = ta < DAY_CUTOFF_MINUTES ? ta + MINUTES_PER_DAY : ta;
+        const keyB = tb < DAY_CUTOFF_MINUTES ? tb + MINUTES_PER_DAY : tb;
+        return keyA - keyB;
       });
+
+      return sleep ? [...morning, ...middle, sleep] : [...morning, ...middle];
     },
 
     /**
@@ -39,52 +60,76 @@ export default {
     },
 
     /**
-     * Временной диапазон календаря в минутах от полуночи: от первой засечки −30 мин до последней +30 мин.
+     * Временной диапазон в минутах: от первой засечки −30 мин до последней +30 мин.
+     * При переходе через полночь (сон в 01:00, подъём в 10:00) end < start.
      * @returns {{ start: number, end: number }}
      */
     timeRange() {
-      if (!this.sortedMarks.length) return { start: 0, end: 1440 };
+      if (!this.sortedMarks.length) return { start: 0, end: MINUTES_PER_DAY };
 
       const firstMarkTime = this.timeToMinutes(this.sortedMarks[0].time);
       const lastMarkTime = this.timeToMinutes(this.sortedMarks[this.sortedMarks.length - 1].time);
 
       return {
         start: Math.max(0, firstMarkTime - 30),
-        end: Math.min(1440, lastMarkTime + 30)
+        end: Math.min(MINUTES_PER_DAY, lastMarkTime + 30)
       };
     },
 
+    /** true, если диапазон переходит через полночь (сон в начале суток). */
+    rangeWraps() {
+      return this.timeRange.end < this.timeRange.start;
+    },
+
+    /** Длина диапазона в минутах (с учётом перехода через полночь). */
+    totalRangeMinutes() {
+      const { start, end } = this.timeRange;
+      return this.rangeWraps ? (MINUTES_PER_DAY - start) + end : end - start;
+    },
+
     /**
-     * Высота SVG календаря в пикселях: (диапазон в минутах / 60) * pixelsPerHour + 100.
+     * Высота SVG календаря в пикселях.
      * @returns {number}
      */
     svgHeight() {
-      const range = this.timeRange.end - this.timeRange.start;
-      const hours = range / 60;
+      const hours = this.totalRangeMinutes / 60;
       return hours * this.pixelsPerHour + 100;
     },
 
     /**
-     * Y-позиция красной линии текущего времени в пикселях; null, если текущее время вне диапазона засечек.
+     * Y-позиция красной линии текущего времени; null, если вне диапазона.
      * @returns {number|null}
      */
     currentTimeYPosition() {
       if (!this.sortedMarks.length) return null;
 
       const now = this.currentTime.getHours() * 60 + this.currentTime.getMinutes();
-      const startTime = this.timeRange.start;
-      const endTime = this.timeRange.end;
+      const { start, end } = this.timeRange;
 
-      if (now < startTime || now > endTime) return null;
+      const inRange = this.rangeWraps
+        ? (now >= start && now < MINUTES_PER_DAY) || (now >= 0 && now <= end)
+        : (now >= start && now <= end);
+      if (!inRange) return null;
 
-      const minutesFromStart = now - startTime;
-      const hoursFromStart = minutesFromStart / 60;
-
-      return hoursFromStart * this.pixelsPerHour + 50;
+      const minutesFromStart = this.minutesFromRangeStart(now);
+      return (minutesFromStart / 60) * this.pixelsPerHour + 50;
     }
   },
 
   methods: {
+    /**
+     * Минуты от начала визуального диапазона (учёт перехода через полночь).
+     * @param {number} timeMinutes - Время в минутах от полуночи
+     * @returns {number}
+     */
+    minutesFromRangeStart(timeMinutes) {
+      const { start } = this.timeRange;
+      if (this.rangeWraps) {
+        return timeMinutes >= start ? timeMinutes - start : (MINUTES_PER_DAY - start) + timeMinutes;
+      }
+      return timeMinutes - start;
+    },
+
     /**
      * Возвращает Y-координату засечки на SVG (пиксели от верха).
      * @param {number} index - Индекс засечки в sortedMarks
@@ -95,12 +140,8 @@ export default {
       if (!mark) return 50;
 
       const markTime = this.timeToMinutes(mark.time);
-      const startTime = this.timeRange.start;
-
-      const minutesFromStart = markTime - startTime;
-      const hoursFromStart = minutesFromStart / 60;
-
-      return hoursFromStart * this.pixelsPerHour + 50;
+      const minutesFromStart = this.minutesFromRangeStart(markTime);
+      return (minutesFromStart / 60) * this.pixelsPerHour + 50;
     },
 
     /**

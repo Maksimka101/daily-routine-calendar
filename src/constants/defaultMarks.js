@@ -3,6 +3,9 @@
  * Сценарий по умолчанию: Сон 22:00, Подъём 07:00
  */
 
+/** ID засечки «Сон» (всегда последняя в порядке дня). */
+export const SLEEP_MARK_ID = 'sleep';
+
 /**
  * Шаблон дефолтной засечки
  * @typedef {Object} DefaultMarkTemplate
@@ -82,7 +85,7 @@ export const EVENING_MARK_TEMPLATES = [
     offsetMinutes: -120 // SleepTime - 2 ч (20:00)
   },
   {
-    id: 'sleep',
+    id: SLEEP_MARK_ID,
     emoji: '🛌',
     title: 'Сон',
     description: 'SleepTime.',
