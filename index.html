@@ -38,7 +38,7 @@
           </template>
           <template x-if="isCreatingSchedule">
             <div class="header-create">
-              <input x-ref="newScheduleInput" x-model="newScheduleName" @keyup.enter="createNewSchedule()"
+              <input x-ref="newScheduleInput" x-init="$el.focus()" x-model="newScheduleName" @keyup.enter="createNewSchedule()"
                 @keydown.escape.prevent="cancelCreation()" type="text" placeholder="Название..."
                 class="header-create__input" />
               <button type="button" @click="createNewSchedule()" class="header-create__btn header-create__btn--confirm"
@@ -55,7 +55,7 @@
             <template x-if="editingTimeField === 'bedtime'">
               <div class="header-time-edit">
                 <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
-                <input x-ref="bedtimeInput" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
+                <input x-ref="bedtimeInput" x-init="$el.focus()" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
                   @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="22:00" maxlength="5"
                   class="header-time-edit__input time-display" />
                 <button type="button" @click="applyTimeEdit()"
@@ -76,7 +76,7 @@
             <template x-if="editingTimeField === 'wakeTime'">
               <div class="header-time-edit">
                 <span class="header-time__emoji header-time__emoji--spaced">☀️</span>
-                <input x-ref="wakeTimeInput" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
+                <input x-ref="wakeTimeInput" x-init="$el.focus()" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
                   @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="07:00" maxlength="5"
                   class="header-time-edit__input time-display" />
                 <button type="button" @click="applyTimeEdit()"
@@ -141,9 +141,9 @@
       </div>
     </main>
 
-    <footer class="container footer">
+    <footer class="container footer" x-cloak>
       <div class="footer__text">
-        Сделано с любовью Максимом Земляникиным для Максима Земляникина и всего человечества
+        Сделано с любовью Максимом Земляникиным для всего человечества. На базе книги Шона Стивенсона «Здоровый сон».
       </div>
     </footer>
   </div>
