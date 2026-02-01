@@ -15,7 +15,7 @@
   --color-stone-700: #44403c;
   --color-red-500: #ef4444;
   --color-red-glow: rgba(239, 68, 68, 0.5);
-  --max-width: 48rem;
+  --max-width: 46rem;
   --header-height: 52px;
   --transition-duration: 150ms;
 }
@@ -45,10 +45,24 @@ body {
   padding-right: 2rem;
 }
 
+@media (max-width: 768px) {
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
 /* Footer */
 .footer {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
 }
 
 .footer__text {
@@ -337,6 +351,15 @@ body {
   padding-bottom: 3rem;
 }
 
+@media (max-width: 768px) {
+  .calendar {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 .calendar__wrap {
   position: relative;
 }
@@ -418,15 +441,15 @@ body {
 
 .calendar-mark {
   position: absolute;
-  width: 37%;
+  width: 40%;
 }
 
 .calendar-mark--left {
-  left: 9.5%;
+  left: 8%;
 }
 
 .calendar-mark--right {
-  right: 9.5%;
+  right: 8%;
 }
 
 .calendar-mark__row {

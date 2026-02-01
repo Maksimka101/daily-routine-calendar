@@ -50,27 +50,6 @@
         </div>
 
         <div class="header__times">
-          <!-- Время сна -->
-          <div class="header-time">
-            <template x-if="editingTimeField === 'bedtime'">
-              <div class="header-time-edit">
-                <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
-                <input x-ref="bedtimeInput" x-init="$el.focus()" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
-                  @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="22:00" maxlength="5"
-                  class="header-time-edit__input time-display" />
-                <button type="button" @click="applyTimeEdit()"
-                  class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
-                <button type="button" @click="cancelEditingTime()"
-                  class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
-              </div>
-            </template>
-            <template x-if="editingTimeField !== 'bedtime'">
-              <button type="button" @click="startEditingTime('bedtime')" class="header-time__btn">
-                <span class="header-time__emoji">🌙</span>
-                <span class="time-display" x-text="activeSchedule?.bedtime ?? ''"></span>
-              </button>
-            </template>
-          </div>
           <!-- Время подъёма -->
           <div class="header-time">
             <template x-if="editingTimeField === 'wakeTime'">
@@ -92,6 +71,27 @@
               </button>
             </template>
           </div>
+          <!-- Время сна -->
+          <div class="header-time">
+            <template x-if="editingTimeField === 'bedtime'">
+              <div class="header-time-edit">
+                <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
+                <input x-ref="bedtimeInput" x-init="$el.focus()" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
+                  @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="22:00" maxlength="5"
+                  class="header-time-edit__input time-display" />
+                <button type="button" @click="applyTimeEdit()"
+                  class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
+                <button type="button" @click="cancelEditingTime()"
+                  class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+              </div>
+            </template>
+            <template x-if="editingTimeField !== 'bedtime'">
+              <button type="button" @click="startEditingTime('bedtime')" class="header-time__btn">
+                <span class="header-time__emoji">🌙</span>
+                <span class="time-display" x-text="activeSchedule?.bedtime ?? ''"></span>
+              </button>
+            </template>
+          </div>
         </div>
       </div>
     </header>
@@ -106,7 +106,7 @@
           <template x-for="(mark, idx) in sortedMarks" :key="idx">
             <div class="branch-wrap" :style="'top: ' + (getMarkYPositionByMark(mark) - 0.5) + 'px'">
               <svg class="branch-svg" viewBox="0 0 100 1" preserveAspectRatio="none">
-                <line class="branch-line" :x1="idx % 2 === 0 ? 50 : 8" y1="0.5" :x2="idx % 2 === 0 ? 92 : 50"
+                <line class="branch-line" :x1="idx % 2 === 0 ? 50 : 7" y1="0.5" :x2="idx % 2 === 0 ? 93 : 50"
                   y2="0.5" />
               </svg>
             </div>
@@ -143,7 +143,7 @@
 
     <footer class="container footer" x-cloak>
       <div class="footer__text">
-        Сделано с любовью Максимом Земляникиным для всего человечества. На базе книги Шона Стивенсона «Здоровый сон».
+        Сделано с любовью Максимом Земляникиным для себя и всего человечества. На базе книги Шона Стивенсона «Здоровый сон»
       </div>
     </footer>
   </div>
