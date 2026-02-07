@@ -22,6 +22,7 @@
 
 /* Base — шрифт как в Tailwind Preflight (system UI stack) */
 body {
+  font-size: 17px;
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   font-feature-settings: 'tnum';
 }
@@ -66,7 +67,7 @@ body {
 }
 
 .footer__text {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-stone-400);
   line-height: 1.625;
   padding-left: 0.625rem;
@@ -100,8 +101,64 @@ body {
   display: flex;
   gap: 1.5rem;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-stone-600);
+}
+
+/* Sleep picker: Start — Badge — End */
+.header-sleep.header__times {
+  gap: 0.25rem;
+}
+
+.header-sleep__badge-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-sleep__badge-wrap::before,
+.header-sleep__badge-wrap::after {
+  content: '';
+  flex: 1;
+  min-width: 1.5rem;
+  max-width: 4rem;
+  height: 1px;
+  background-color: var(--color-stone-300);
+}
+
+.header-sleep__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-stone-500);
+  white-space: nowrap;
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.header-sleep__badge-wrap--dragging .header-sleep__badge {
+  cursor: ew-resize;
+}
+
+.header-sleep-dropdown__shift-tooltip {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-stone-600);
+  background-color: #fff;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Header tab button */
@@ -111,7 +168,7 @@ body {
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.75rem;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   transition: color var(--transition-duration) ease, opacity var(--transition-duration) ease;
   border-radius: 0.25rem;
@@ -148,7 +205,7 @@ body {
 }
 
 .header-tab__delete {
-  font-size: 11px;
+  font-size: 12px;
   transition: all var(--transition-duration) ease;
   color: var(--color-stone-400);
   opacity: 0;
@@ -170,7 +227,7 @@ body {
   align-items: center;
   gap: 0.375rem;
   padding: 0.25rem 0.5rem;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-stone-400);
   transition: all var(--transition-duration) ease;
   border-radius: 0.25rem;
@@ -209,7 +266,7 @@ body {
 .header-create__input {
   padding: 0.25rem 0.5rem;
   height: 28px;
-  font-size: 13px;
+  font-size: 14px;
   background-color: var(--color-stone-50);
   border: none;
   border-radius: 0.25rem;
@@ -225,7 +282,7 @@ body {
 .header-create__btn {
   padding: 0 0.5rem;
   height: 28px;
-  font-size: 13px;
+  font-size: 14px;
   background: none;
   border: none;
   cursor: pointer;
@@ -286,7 +343,7 @@ body {
 }
 
 .header-time__emoji {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .header-time__emoji--spaced {
@@ -299,13 +356,16 @@ body {
 }
 
 .header-time-edit__input {
-  padding: 0.25rem 0.5rem;
+  box-sizing: border-box;
+  width: calc(5.5ch + 0.5rem);
+  min-width: calc(5.5ch + 0.5rem);
+  padding: 0.25rem 0.25rem;
   height: 28px;
-  font-size: 13px;
+  font-size: 14px;
   background-color: var(--color-stone-50);
   border: none;
   border-radius: 0.25rem;
-  width: 3.5rem;
+  flex: 0 0 auto;
   transition: background-color var(--transition-duration) ease;
 }
 
@@ -317,7 +377,7 @@ body {
 .header-time-edit__btn {
   padding: 0 0.375rem;
   height: 28px;
-  font-size: 13px;
+  font-size: 14px;
   background: none;
   border: none;
   cursor: pointer;
@@ -338,6 +398,77 @@ body {
 
 .header-time-edit__btn--cancel:hover {
   color: var(--color-stone-600);
+}
+
+.header-time--with-dropdown {
+  position: relative;
+}
+
+.header-time-edit-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.header-sleep-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  width: 20rem;
+  padding: 0.25rem 0;
+  background-color: #fff;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.header-sleep-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-duration) ease;
+}
+
+.header-sleep-dropdown__time {
+  color: var(--color-stone-700);
+}
+
+.header-sleep-dropdown__meta {
+  color: var(--color-stone-500);
+}
+
+.header-sleep-dropdown__item:hover {
+  background-color: var(--color-stone-100);
+}
+
+.header-sleep-dropdown__check {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--color-stone-600);
+}
+
+.header-sleep-dropdown__rec {
+  font-size: 13px;
+  color: var(--color-stone-500);
+}
+
+.header-sleep-dropdown__hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-stone-500);
+  border-top: 1px solid var(--color-stone-200);
 }
 
 /* Tabular nums для времени */
@@ -462,20 +593,20 @@ body {
 }
 
 .calendar-mark__emoji {
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1;
   flex-shrink: 0;
 }
 
 .calendar-mark__time {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-stone-400);
   line-height: 1;
   flex-shrink: 0;
 }
 
 .calendar-mark__title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-stone-600);
   line-height: 1.25;
@@ -486,7 +617,7 @@ body {
 }
 
 .calendar-mark__desc {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-stone-400);
   line-height: 1.5;
   padding-left: 0.625rem;

@@ -142,6 +142,71 @@ export function normalizeTime(time) {
 }
 
 /**
+ * Длительность сна в минутах: от bedtime до wakeTime (с учётом перехода через полночь).
+ * @param {string} bedtime - Время засыпания 'HH:MM'
+ * @param {string} wakeTime - Время пробуждения 'HH:MM'
+ * @returns {number} Длительность в минутах (0..24*60)
+ * @example
+ * getSleepDurationMinutes('22:00', '07:00') // 540 (9ч)
+ * getSleepDurationMinutes('23:00', '07:00') // 480 (8ч)
+ */
+export function getSleepDurationMinutes(bedtime, wakeTime) {
+  const bed = parseTime(bedtime);
+  const wake = parseTime(wakeTime);
+  if (wake > bed) {
+    return wake - bed;
+  }
+  return 24 * 60 - bed + wake;
+}
+
+/**
+ * Форматирует длительность для бейджа: "7ч 30м", "8ч", "45м".
+ * @param {number} totalMinutes - Длительность в минутах
+ * @returns {string} Строка для отображения
+ */
+export function formatDuration(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hours === 0) return `${mins}м`;
+  if (mins === 0) return `${hours}ч`;
+  return `${hours}ч ${mins}м`;
+}
+
+/** Длительность одного цикла сна в минутах. */
+const SLEEP_CYCLE_MINUTES = 90;
+
+/** Рекомендуемое число циклов (7.5 ч). */
+const RECOMMENDED_CYCLES = 5;
+
+/**
+ * Варианты времени для dropdown по циклам сна (шаг 1.5 ч).
+ * @param {string} anchorTime - Якорное время 'HH:MM' (при редактировании End — bedtime, при редактировании Start — wakeTime)
+ * @param {'bedtime'|'wakeTime'} editingField - Какое поле редактируется
+ * @returns {{ time: string, durationMinutes: number, durationLabel: string, cycles: number, isRecommended: boolean }[]}
+ */
+export function getSleepCycleOptions(anchorTime, editingField) {
+  if (!anchorTime) return [];
+  const options = [];
+  const minCycles = 3;
+  const maxCycles = 8;
+  for (let cycles = minCycles; cycles <= maxCycles; cycles++) {
+    const durationMinutes = cycles * SLEEP_CYCLE_MINUTES;
+    const time =
+      editingField === 'wakeTime'
+        ? shiftTime(anchorTime, durationMinutes)
+        : shiftTime(anchorTime, -durationMinutes);
+    options.push({
+      time,
+      durationMinutes,
+      durationLabel: formatDuration(durationMinutes),
+      cycles,
+      isRecommended: cycles === RECOMMENDED_CYCLES
+    });
+  }
+  return options;
+}
+
+/**
  * Генерирует UUID v4
  * @returns {string} UUID
  */

@@ -6,7 +6,7 @@
 import { ScheduleService } from './services/ScheduleService.js';
 import { MarkService } from './services/MarkService.js';
 import { SettingsService } from './services/SettingsService.js';
-import { normalizeTime, parseTime } from './utils/TimeUtils.js';
+import { normalizeTime, parseTime, getSleepDurationMinutes, formatDuration, getSleepCycleOptions, shiftTime } from './utils/TimeUtils.js';
 import { SLEEP_MARK_ID } from './constants/defaultMarks.js';
 
 /**
@@ -45,6 +45,10 @@ const MINUTES_PER_DAY = 24 * 60;
  * @returns {string} return.newScheduleName - вводимое имя новой вкладки
  * @returns {null|'bedtime'|'wakeTime'} return.editingTimeField - какое поле времени редактируется
  * @returns {string} return.editingTimeValue - значение в поле редактирования времени
+ * @returns {number} return.sleepDurationMinutes - длительность сна в минутах
+ * @returns {string} return.sleepDurationLabel - строка длительности для бейджа
+ * @returns {{ time: string, durationMinutes: number, durationLabel: string, cycles: number, isRecommended: boolean }[]} return.sleepCycleOptions - варианты времени по циклам сна для dropdown
+ * @returns {Function} return.selectSleepOption - применяет выбранное из dropdown время
  */
 export function appData() {
   const scheduleService = new ScheduleService();
@@ -62,10 +66,52 @@ export function appData() {
     newScheduleName: '',
     editingTimeField: null,
     editingTimeValue: '',
+    isDraggingBadge: false,
+    shiftDragDeltaMinutes: 0,
+
+    /** Текст tooltip при сдвиге бейджа: "+15 мин", "-30 мин", "0". @returns {string} */
+    get shiftDragTooltipText() {
+      const d = this.shiftDragDeltaMinutes;
+      if (d === 0) return '0';
+      return (d > 0 ? '+' : '') + d + ' мин';
+    },
 
     /** @returns {Schedule|null} Текущее активное расписание */
     get activeSchedule() {
       return this.schedules[this.activeScheduleIndex] || null;
+    },
+
+    /** Длительность сна в минутах (bedtime → wakeTime, с учётом перехода через полночь). @returns {number} */
+    get sleepDurationMinutes() {
+      const s = this.activeSchedule;
+      if (!s?.bedtime || !s?.wakeTime) return 0;
+      return getSleepDurationMinutes(s.bedtime, s.wakeTime);
+    },
+
+    /** Строка длительности для бейджа: "7ч 30м", "8ч", "45м". @returns {string} */
+    get sleepDurationLabel() {
+      return formatDuration(this.sleepDurationMinutes);
+    },
+
+    /** Варианты времени для dropdown (циклы по 1.5 ч) при редактировании времени сна. Якорь: противоположное поле. @returns {{ time: string, durationMinutes: number, durationLabel: string, cycles: number, isRecommended: boolean }[]} */
+    get sleepCycleOptions() {
+      const s = this.activeSchedule;
+      if (!s || !this.editingTimeField) return [];
+      const anchor = this.editingTimeField === 'wakeTime' ? s.bedtime : s.wakeTime;
+      return getSleepCycleOptions(anchor, this.editingTimeField);
+    },
+
+    /**
+     * Склонение слова «цикл» по числу: 1 цикл, 2 цикла, 5 циклов.
+     * @param {number} n - Количество циклов
+     * @returns {string} Строка вида "N цикл" / "N цикла" / "N циклов"
+     */
+    cyclesLabel(n) {
+      const mod10 = n % 10;
+      const mod100 = n % 100;
+      if (mod10 === 1 && mod100 !== 11) return `${n} цикл`;
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} цикла`;
+      return `${n} циклов`;
     },
 
     /** Засечки: утро → середина дня → сон. Если сон по времени раньше подъёма — сон и всё до него в конец. @returns {Mark[]} */
@@ -299,8 +345,13 @@ export function appData() {
       this.editingTimeValue = '';
     },
 
-    /** Применяет отредактированное время: нормализует, эмитит updateSchedule; при невалидном вводе — отмена. */
-    applyTimeEdit() {
+    /**
+     * Применяет отредактированное время при blur/Enter. Не применяет, если фокус ушёл в тот же блок (dropdown),
+     * чтобы клик по пункту списка успел сработать.
+     * @param {FocusEvent} [event] - Событие blur (relatedTarget — элемент, получивший фокус)
+     */
+    applyTimeEdit(event) {
+      if (event?.relatedTarget?.closest?.('.header-time-edit-wrap')) return;
       const normalized = normalizeTime(this.editingTimeValue);
       if (!normalized) {
         this.cancelEditingTime();
@@ -309,6 +360,54 @@ export function appData() {
       const field = this.editingTimeField;
       this.handleUpdateSchedule({ [field]: normalized });
       this.cancelEditingTime();
+    },
+
+    /**
+     * Выбор времени из dropdown по циклам сна: применяет время и закрывает редактирование.
+     * @param {string} time - Время в формате 'HH:MM'
+     */
+    selectSleepOption(time) {
+      this.handleUpdateSchedule({ [this.editingTimeField]: time });
+      this.cancelEditingTime();
+    },
+
+    /** Шаг сдвига в минутах (по специ: 15 мин). */
+    SHIFT_STEP_MINUTES: 15,
+    /** Пикселей на один шаг сдвига (вязкое движение; больше = меньше чувствительность). */
+    SHIFT_PIXELS_PER_STEP: 20,
+
+    /**
+     * Начинает сдвиг времени сна перетаскиванием бейджа. Вешает mousemove/mouseup на document.
+     * @param {MouseEvent} e - mousedown на бейдже
+     */
+    startShiftDrag(e) {
+      if (!this.activeSchedule) return;
+      e.preventDefault();
+      const startX = e.clientX;
+      const startBedtime = this.activeSchedule.bedtime;
+      const startWakeTime = this.activeSchedule.wakeTime;
+      this.isDraggingBadge = true;
+      this.shiftDragDeltaMinutes = 0;
+      let lastAppliedDelta = 0;
+
+      const onMove = (e2) => {
+        const deltaX = e2.clientX - startX;
+        const steps = Math.round(deltaX / this.SHIFT_PIXELS_PER_STEP);
+        const deltaMinutes = steps * this.SHIFT_STEP_MINUTES;
+        this.shiftDragDeltaMinutes = deltaMinutes;
+        if (deltaMinutes === lastAppliedDelta) return;
+        lastAppliedDelta = deltaMinutes;
+        const newBedtime = shiftTime(startBedtime, deltaMinutes);
+        const newWakeTime = shiftTime(startWakeTime, deltaMinutes);
+        this.handleUpdateSchedule({ bedtime: newBedtime, wakeTime: newWakeTime });
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        this.isDraggingBadge = false;
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
     },
 
     /**

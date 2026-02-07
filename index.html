@@ -49,46 +49,73 @@
           </template>
         </div>
 
-        <div class="header__times">
-          <!-- Время подъёма -->
-          <div class="header-time">
-            <template x-if="editingTimeField === 'wakeTime'">
-              <div class="header-time-edit">
-                <span class="header-time__emoji header-time__emoji--spaced">☀️</span>
-                <input x-ref="wakeTimeInput" x-init="$el.focus()" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
-                  @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="07:00" maxlength="5"
-                  class="header-time-edit__input time-display" />
-                <button type="button" @click="applyTimeEdit()"
-                  class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
-                <button type="button" @click="cancelEditingTime()"
-                  class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
-              </div>
-            </template>
-            <template x-if="editingTimeField !== 'wakeTime'">
-              <button type="button" @click="startEditingTime('wakeTime')" class="header-time__btn">
-                <span class="header-time__emoji">☀️</span>
-                <span class="time-display" x-text="activeSchedule?.wakeTime ?? ''"></span>
-              </button>
-            </template>
-          </div>
-          <!-- Время сна -->
-          <div class="header-time">
+        <div class="header__times header-sleep">
+          <!-- Start: время засыпания -->
+          <div class="header-time header-time--with-dropdown">
             <template x-if="editingTimeField === 'bedtime'">
-              <div class="header-time-edit">
-                <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
-                <input x-ref="bedtimeInput" x-init="$el.focus()" x-model="editingTimeValue" @keyup.enter="applyTimeEdit()"
-                  @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="22:00" maxlength="5"
-                  class="header-time-edit__input time-display" />
-                <button type="button" @click="applyTimeEdit()"
-                  class="header-time-edit__btn header-time-edit__btn--apply" title="Применить">✓</button>
-                <button type="button" @click="cancelEditingTime()"
-                  class="header-time-edit__btn header-time-edit__btn--cancel" title="Отмена">✕</button>
+              <div class="header-time-edit-wrap" @click.outside="cancelEditingTime()">
+                <div class="header-time-edit">
+                  <span class="header-time__emoji header-time__emoji--spaced">🌙</span>
+                  <input x-ref="bedtimeInput" x-init="$el.focus()" x-model="editingTimeValue" @blur="applyTimeEdit($event)"
+                    @keyup.enter="applyTimeEdit()" @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="22:00" maxlength="5"
+                    class="header-time-edit__input time-display" />
+                </div>
+                <div class="header-sleep-dropdown" x-show="sleepCycleOptions.length" x-transition>
+                  <div class="header-sleep-dropdown__list">
+                    <template x-for="opt in sleepCycleOptions" :key="opt.time">
+                      <button type="button" class="header-sleep-dropdown__item time-display"
+                        @click="selectSleepOption(opt.time)">
+<span class="header-sleep-dropdown__time time-display" x-text="opt.time"></span>
+                        <span class="header-sleep-dropdown__meta" x-text="' — ' + opt.durationLabel + ' (' + cyclesLabel(opt.cycles) + ')'"></span>
+                        <span x-show="opt.durationMinutes === sleepDurationMinutes" class="header-sleep-dropdown__check" title="Текущая длительность">✓</span>
+                    </button>
+                  </template>
+                </div>
+                <p class="header-sleep-dropdown__hint">Один цикл сна длится ~90 минут и состоит из фаз медленного и быстрого сна. Проснуться в конце цикла гораздо легче, чем прервать его на середине.</p>
+                </div>
               </div>
             </template>
             <template x-if="editingTimeField !== 'bedtime'">
               <button type="button" @click="startEditingTime('bedtime')" class="header-time__btn">
                 <span class="header-time__emoji">🌙</span>
                 <span class="time-display" x-text="activeSchedule?.bedtime ?? ''"></span>
+              </button>
+            </template>
+          </div>
+          <span class="header-sleep__badge-wrap" :class="{ 'header-sleep__badge-wrap--dragging': isDraggingBadge }">
+            <span class="header-sleep-dropdown__shift-tooltip" x-show="isDraggingBadge" x-text="shiftDragTooltipText"></span>
+            <span class="header-sleep__badge time-display" x-text="sleepDurationLabel" title="Длительность сна. Перетащите для сдвига времени."
+              @mousedown.prevent="startShiftDrag($event)"></span>
+          </span>
+          <!-- End: время пробуждения -->
+          <div class="header-time header-time--with-dropdown">
+            <template x-if="editingTimeField === 'wakeTime'">
+              <div class="header-time-edit-wrap" @click.outside="cancelEditingTime()">
+                <div class="header-time-edit">
+                  <span class="header-time__emoji header-time__emoji--spaced">☀️</span>
+                  <input x-ref="wakeTimeInput" x-init="$el.focus()" x-model="editingTimeValue" @blur="applyTimeEdit($event)"
+                    @keyup.enter="applyTimeEdit()" @keydown.escape.prevent="cancelEditingTime()" type="text" placeholder="07:00" maxlength="5"
+                    class="header-time-edit__input time-display" />
+                </div>
+                <div class="header-sleep-dropdown" x-show="sleepCycleOptions.length" x-transition>
+                  <div class="header-sleep-dropdown__list">
+                    <template x-for="opt in sleepCycleOptions" :key="opt.time">
+                      <button type="button" class="header-sleep-dropdown__item time-display"
+                        @click="selectSleepOption(opt.time)">
+<span class="header-sleep-dropdown__time time-display" x-text="opt.time"></span>
+                        <span class="header-sleep-dropdown__meta" x-text="' — ' + opt.durationLabel + ' (' + cyclesLabel(opt.cycles) + ')'"></span>
+                        <span x-show="opt.durationMinutes === sleepDurationMinutes" class="header-sleep-dropdown__check" title="Текущая длительность">✓</span>
+                    </button>
+                  </template>
+                </div>
+                <p class="header-sleep-dropdown__hint">Один цикл сна длится ~90 минут и состоит из фаз медленного и быстрого сна. Проснуться в конце цикла гораздо легче, чем прервать его на середине.</p>
+                </div>
+              </div>
+            </template>
+            <template x-if="editingTimeField !== 'wakeTime'">
+              <button type="button" @click="startEditingTime('wakeTime')" class="header-time__btn">
+                <span class="header-time__emoji">☀️</span>
+                <span class="time-display" x-text="activeSchedule?.wakeTime ?? ''"></span>
               </button>
             </template>
           </div>
