@@ -572,15 +572,15 @@ body {
 
 .calendar-mark {
   position: absolute;
-  width: 40%;
+  width: 42%;
 }
 
 .calendar-mark--left {
-  left: 8%;
+  left: 6%;
 }
 
 .calendar-mark--right {
-  right: 8%;
+  right: 6%;
 }
 
 .calendar-mark__row {
